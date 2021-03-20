@@ -3,3 +3,9 @@
 *.iml
 *.xml
 /venv*
+arm.rar
+*.rar
+installed
+NAS.log
+arm.yaml
+.idea/.name
