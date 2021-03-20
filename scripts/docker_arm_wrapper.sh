@@ -7,8 +7,8 @@ DOCKER_IMAGE="arm-combined:latest"
 CONTAINER_NAME="arm-rippers"
 CONTAINER_VOLUME="/home/arm:/home/arm"
 CONTAINER_RESTART="on-failure:3"
-ARM_UID="0" # "$(id -u plex)"
-ARM_GID="0" # "$(id -g plex)"
+ARM_UID="$(id -u arm)"
+ARM_GID="$(id -g arm)"
 
 sleep 5 # allow the system enough time to load disc information such as title
 
