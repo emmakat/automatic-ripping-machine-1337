@@ -69,7 +69,7 @@ GET_AUDIO_TITLE: "musicbrainz"
 
 ## Location of your ABCDE config file
 ## This over-rides any other abcde.conf files 
-ABCDE_CONFIG_FILE: "/etc/abcde.conf"
+ABCDE_CONFIG_FILE: "/home/arm/config/.abcde.conf"
 
 #####################
 ## Directory setup ##
