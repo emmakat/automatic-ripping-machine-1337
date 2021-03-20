@@ -199,6 +199,6 @@ ARG image_revision=1.1
 ARG image_created
 
 LABEL org.opencontainers.image.source=https://github.com/1337-server/automatic-ripping-machine
-LABEL org.opencontainers.image.revision="2.5.0"
-LABEL org.opencontainers.image.created=${image_created}
+LABEL org.opencontainers.image.revision="2.5.2"
+LABEL org.opencontainers.image.created="2021-03-20"
 LABEL org.opencontainers.image.license=MIT
