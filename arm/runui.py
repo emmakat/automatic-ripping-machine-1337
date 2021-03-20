@@ -26,6 +26,5 @@ if host == 'x.x.x.x':
         host = '127.0.0.1'
 
 if __name__ == '__main__':
-    check_db_version(cfg['INSTALLPATH'], cfg['DBFILE'])  # cfg['INSTALLPATH'], cfg['DBFILE']
     app.run(host=host, port=cfg['WEBSERVER_PORT'], debug=True)
     # app.run(debug=True)
