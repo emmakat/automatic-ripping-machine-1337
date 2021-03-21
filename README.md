@@ -67,16 +67,16 @@ docker run -d \
    -p "8080:8080" \
    -e UID="1000" -e GID="1000" \
    -v "/home/arm:/home/arm" \
-   -v "/home/arm/music:/home/arm/music" \
+   -v "/home/arm/Music:/home/arm/Music" \
    -v "/home/arm/config:/home/arm/config" \
    -v "/home/arm/logs:/home/arm/logs" \
    -v "/home/arm/media:/home/arm/media" \
-   --device="/dev/sr0:/dev/sr0" \
    --privileged \
    --restart "always" \
    --name "arm-rippers" \
    1337server/automatic-ripping-machine:latest
 ```
+**The UID and GID must exists outside the container**
 
 for more details please use [the wiki](https://github.com/1337-server/automatic-ripping-machine/wiki/docker)
  
