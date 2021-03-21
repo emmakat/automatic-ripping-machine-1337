@@ -432,8 +432,10 @@ def settings():
 
         def set_file_last_modified(file_path, dt):
             dt_epoch = dt.timestamp()
-            os.utime(file_path, (dt_epoch, dt_epoch))
-
+            try:
+                os.utime(file_path, (dt_epoch, dt_epoch))
+            except OSError:
+                app.logger.debug("Dont have permission to update filetime ")
         now = datetime.datetime.now()
         arm_main = os.path.join(os.path.dirname(os.path.abspath(__file__)), "routes.py")
         set_file_last_modified(arm_main, now)
