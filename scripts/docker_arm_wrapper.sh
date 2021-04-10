@@ -12,7 +12,7 @@ ARM_GID="$(id -g arm)"
 
 sleep 5 # allow the system enough time to load disc information such as title
 
-echo "Enterting docker wrapper" | logger -t ARM -s
+echo "Entering docker wrapper" | logger -t ARM -s
 
 # exit if udev ID_CDROM_MEDIA properties not available yet
 # avoid running too early
