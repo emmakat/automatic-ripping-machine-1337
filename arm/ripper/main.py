@@ -222,7 +222,7 @@ def main(logfile, job):
 
         #  The dvd directory already exists - Lets make a new one using random numbers
         if (utils.make_dir(hboutpath)) is False:
-            logging.info("Directory exist.")
+            logging.info(f"Handbrake Output directory \"{hboutpath}\" already exists.")
             #  Only begin ripping if we are allowed to make duplicates
             # Or the successful rip of the disc is not found in our database
             if job.config.ALLOW_DUPLICATES or not have_dupes:
