@@ -46,10 +46,11 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 # build libdvd in a separate stage, pulls in tons of deps
 FROM base as libdvd
 
+RUN apt-get update && apt-get install build-essential -y
+
 RUN \
   bash /root/add-ppa.sh ppa:mc3man/focal6 && \
   apt update -y && \
-  DEBIAN_FRONTEND=noninteractive apt install -y build-essential  && \
   DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends libdvd-pkg && \
   DEBIAN_FRONTEND=noninteractive dpkg-reconfigure libdvd-pkg && \
   DEBIAN_FRONTEND=noninteractive apt clean -y && \
