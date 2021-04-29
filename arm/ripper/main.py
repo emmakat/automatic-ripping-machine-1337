@@ -502,7 +502,7 @@ if __name__ == "__main__":
         (job.disctype, job.label) = utils.parse_udev_cmdline(args)
     else:
         (job.disctype, job.label) = utils.detect_disctype(devpath)
-    logfile = logger.setuplogging(job)
+    logfile = logger.setup_logging(job)
     print("Log: " + logfile)
     logging.info("Starting ARM processing at " + str(datetime.datetime.now()))
 
@@ -524,7 +524,7 @@ if __name__ == "__main__":
     job.arm_version = version
     logging.info(("Python version: " + sys.version).replace('\n', ""))
     logging.info("User is: " + getpass.getuser())
-    logger.cleanuplogs(job.config.LOGPATH, job.config.LOGLIFE)
+    logger.clean_up_logs(job.config.LOGPATH, job.config.LOGLIFE)
     logging.info("Job: " + str(job.label))
 
     # a_jobs = Job.query.filter_by(status="active")

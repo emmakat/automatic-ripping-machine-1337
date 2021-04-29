@@ -77,10 +77,13 @@ def call_omdb_api(title=None, year=None, imdbID=None, plot="short"):
         app.logger.debug("omdb - " + str(title_info))
     except urllib.error.HTTPError as e:
         app.logger.debug(f"omdb call failed with error - {e}")
-        return {}
+        return None
     # logging.info("Response from Title Info command"+str(title_info))
     # d = {'year': '1977'}
     # dvd_info = omdb.get(title=title, year=year)
+    # If we failed to find a movie give back None for armui and arm ripper
+    if 'Error' in title_info or title_info['Response'] == "False":
+        title_info = None
     app.logger.debug("omdb - call was successful")
     return title_info
     # except Exception:
@@ -499,7 +502,7 @@ def tmdb_search(search_query=None, year=None):
     # if status_code is in p we know there was an error
     if 'status_code' in p:
         app.logger.debug(f"get_tmdb_poster failed with error -  {p['status_message']}")
-        return {}
+        return None
     # x = json.dumps(response.json(), indent=4, sort_keys=True)
     # print(x)
     x = {}
