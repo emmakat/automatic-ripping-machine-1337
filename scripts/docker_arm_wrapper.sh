@@ -2,10 +2,11 @@
 #
 #
 set -euo pipefail
-
+# Change this to docker.com image
 DOCKER_IMAGE="arm-combined:latest"
+
 CONTAINER_NAME="arm-rippers"
-CONTAINER_VOLUME="/home/arm:/home/arm"
+CONTAINER_VOLUME="-v /home/arm:/home/arm -v /home/arm/config:/home/arm/config -v /home/arm/Music:/home/arm/Music -v /home/arm/logs:/home/arm/logs -v /home/arm/media:/home/arm/media"
 CONTAINER_RESTART="on-failure:3"
 ARM_UID="$(id -u arm)"
 ARM_GID="$(id -g arm)"
@@ -77,11 +78,9 @@ function runArmContainer {
   #  capability: SYS_ADMIN
   #  security option: apparmor:unconfined
   docker run -d \
-    --device="${DEVNAME}:/dev/sr0" ${SG_DEV_ARG} \
     -e UID="${ARM_UID}" -e GID="${ARM_GID}" \
     -v "${CONTAINER_VOLUME}" \
-    --cap-add SYS_ADMIN \
-    --security-opt apparmor:unconfined \
+    --privileged \
     --restart "${CONTAINER_RESTART}" \
     --name "${CONTAINER_NAME}" \
     "${DOCKER_IMAGE}" \
@@ -105,7 +104,7 @@ function startArmRip {
     disctype="unknown=1"
   fi
   # This lets us get all of udev perams
-  echo "Starting udev in ${CONTAINER_NAME}" | logger -t ARM
+  #echo "Starting udev in ${CONTAINER_NAME}" | logger -t ARM
   #docker exec -i -w /home/arm \
     #"${CONTAINER_NAME}" \
     #/bin/bash /etc/init.d/udev start | logger -t ARM

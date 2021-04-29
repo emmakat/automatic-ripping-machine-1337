@@ -52,16 +52,21 @@ def music_brainz(discid, job):
         infos = mb.get_releases_by_discid(discid, includes=['artist-credits'])
         logging.debug("Infos: %s", infos)
         logging.debug("discid = " + str(discid))
+        release = infos['disc']['release-list'][0]
         # Clean up the date and the title
-        new_year = str(infos['disc']['release-list'][0]['date'])
-        new_year = re.sub("-[0-9]{2}-[0-9]{2}$", "", new_year)
-        title = str(infos['disc']['release-list'][0]['title'])
+        if 'date' in release:
+            new_year = str(release['date'])
+            new_year = re.sub("-[0-9]{2}-[0-9]{2}$", "", new_year)
+        else:
+            # sometimes there is no date in a release
+            new_year = ""
+        title = str(release.get('title', 'no title'))
         # Set out release id as the CRC_ID
-        # job.crc_id = infos['disc']['release-list'][0]['id']
+        # job.crc_id = release['id']
         # job.hasnicetitle = True
         args = {
             'job_id': str(job.job_id),
-            'crc_id': infos['disc']['release-list'][0]['id'],
+            'crc_id': release['id'],
             'hasnicetitle': True,
             'year': str(new_year),
             'year_auto': str(new_year),
@@ -69,8 +74,6 @@ def music_brainz(discid, job):
             'title_auto': title
         }
         database_updater(args, job)
-        # db.session.commit()
-        # time.sleep(1)
         logging.debug("musicbrain works -  New title is " + title + ".  New Year is: " + new_year)
     except mb.WebServiceError as exc:
         logging.error("Cant reach MB or cd not found ? - ERROR: " + str(exc))
@@ -78,31 +81,30 @@ def music_brainz(discid, job):
         return ""
     try:
         # We never make it to here if the mb fails
-        artist = infos['disc']['release-list'][0]['artist-credit'][0]['artist']['name']
+        artist = release['artist-credit'][0]['artist']['name']
         logging.debug("artist=====" + str(artist))
-        logging.debug("do have artwork?======" + str(infos['disc']['release-list'][0]['cover-art-archive']['artwork']))
+        logging.debug("do have artwork?======" + str(release['cover-art-archive']['artwork']))
         # Get our front cover if it exists
         if get_cd_art(job, infos):
             logging.debug("we got an art image")
         else:
             logging.debug("we didnt get art image")
         # Set up the database properly for music cd's
-        # job.logfile = clean_for_log(artist) + "_" + clean_for_log(infos['disc']['release-list'][0]['title']) + ".log"
+        artist_title = artist + " " + title
         args = {
             'job_id': str(job.job_id),
-            'year': str(new_year),
-            'year_auto': str(new_year),
-            'title': str(artist + " " + title),
-            'title_auto': str(artist + " " + title),
+            'year': new_year,
+            'year_auto': new_year,
+            'title': artist_title,
+            'title_auto': artist_title,
             'no_of_titles': infos['disc']['offset-count']
         }
         database_updater(args, job)
-        # db.session.commit()
-        return artist + " " + str(infos['disc']['release-list'][0]['title'])
     except Exception as exc:
+        artist_title = "Not identified" if not title else title
         logging.error("Try 2 -  ERROR: " + str(exc))
         db.session.rollback()
-        return artist + " " + str(infos['disc']['release-list'][0]['title'])
+    return artist_title
 
 
 def clean_for_log(s):
@@ -122,31 +124,21 @@ def get_title(discid, job):
     return:
     the label of the disc as a string or "" if nothing was found
 
-    Notes: dont try to use logging here -  doing so will break the arm setuplogging() function
+    Notes: dont try to use logging here -  doing so will break the arm setup_logging() function
     """
     mb.set_useragent("arm", "v1.0")
     try:
         infos = mb.get_releases_by_discid(discid, includes=['artist-credits'])
-        logging.debug('mb info = %s', infos)
         title = str(infos['disc']['release-list'][0]['title'])
-        logging.debug('title = %s', title)
         # Start setting our db stuff
         job.crc_id = str(infos['disc']['release-list'][0]['id'])
-        logging.debug('crc = %s', job.crc_id)
         artist = str(infos['disc']['release-list'][0]['artist-credit'][0]['artist']['name'])
-        logging.debug('artist = %s', artist)
-        # log = clean_for_log(artist) + "_" + clean_for_log(title) + ".log"
         job.title = job.title_auto = artist + " " + title
-        logging.debug('job.title = %s', job.title)
         job.video_type = "Music"
         clean_title = clean_for_log(artist) + "-" + clean_for_log(title)
-        logging.debug('clean title = %s', clean_title)
         db.session.commit()
         return clean_title
-        # return artist + "_" + title
-    except mb.WebServiceError as exc:
-        logging.error("mb.gettitle -  ERROR: " + str(exc))
-        logging.debug('error = %s', str(exc))
+    except mb.WebServiceError:
         db.session.rollback()
         return "not identified"
 
@@ -189,8 +181,6 @@ def get_cd_art(job, infos):
         # [<img src="https://images-eu.ssl-images-amazon.com/images/I/41SN9FK5ATL.jpg"/>]
         job.poster_url = re.search(r'<img src="(.*)"', str(img)).group(1)
         job.poster_url_auto = job.poster_url
-        # logging.debug("img =====  " + str(img))
-        # logging.debug("img stripped =====" + str(job.poster_url))
         db.session.commit()
         if job.poster_url != "":
             return True
@@ -213,55 +203,15 @@ def database_updater(args, job, wait_time=90):
     """
     # Loop through our args and try to set any of our job variables
     for (key, value) in args.items():
-        logging.debug(str(key) + "= " + str(value))
-        logging.debug("key = " + str(key))
-        if key == "job_id":
-            job.job_id = value
-        elif key == "crc_id":
-            job.crc_id = value
-        elif key == "year":
-            job.year = value
-        elif key == "year_auto":
-            job.year_auto = value
-        elif key == "year_manual":
-            job.year_manual = value
-        elif key == "no_of_titles":
-            job.no_of_titles = value
-        elif key == "title":
-            job.title = value
-        elif key == "title_auto":
-            job.title_auto = value
-        elif key == "title_manual":
-            job.title_manual = value
-        elif key == "video_type":
-            job.video_type = value
-        elif key == "video_type_auto":
-            job.video_type_auto = value
-        elif key == "video_type_manual":
-            job.video_type_manual = value
-        elif key == "imdb_id":
-            job.imdb_id = value
-        elif key == "imdb_id_auto":
-            job.poster_url = value
-        elif key == "imdb_id_manual":
-            job.imdb_id_manual = value
-        elif key == "poster_url":
-            job.poster_url = value
-        elif key == "poster_url_auto":
-            job.poster_url_auto = value
-        elif key == "poster_url_manual":
-            job.poster_url_manual = value
-        elif key == "hasnicetitle":
-            job.hasnicetitle = value
-
+        setattr(job, key, value)
+        # logging.debug(str(key) + "= " + str(value))
     for i in range(wait_time):  # give up after the users wait period in seconds
         try:
             db.session.commit()
         except Exception as e:
-            # logging.debug("Exception = " + str(e) + "\n")
             if "locked" in str(e):
                 time.sleep(1)
-                logging.debug("database is locked - trying in 1 second")
+                logging.debug(f"database is locked - trying in 1 second - {i}/{wait_time} sec")
             else:
                 logging.debug("Error: " + str(e))
                 db.session.rollback()
@@ -282,4 +232,4 @@ if __name__ == "__main__":
     logging.debug("DiscID: %s (%s)", str(myid), myid.freedb_id)
     logging.debug("URL: %s", myid.submission_url)
     logging.debug("Tracks: %s", myid.tracks)
-    logging.debug("Musicbrain: %s", music_brainz(myid))
+    logging.debug("Musicbrain: %s", music_brainz(myid, None))

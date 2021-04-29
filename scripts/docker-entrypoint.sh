@@ -9,25 +9,24 @@ GID="${GID:-1000}"
 export USER=arm
 export HOME="/home/${USER}"
 
-echo "creating group [arm] with id ${GID}"
+echo "creating group [${UID}] with id ${GID}"
 groupadd -fo -g "${GID}" "${USER}"
 if ! id -u "${USER}" ; then
-  echo "creating user [arm] with id ${UID}"
+  echo "creating user [${USER}] with id ${UID}"
   useradd --shell /bin/bash \
     -u "${UID}" -g "${GID}" -G video,cdrom \
     -o -c "" "${USER}"
   chown "${USER}.${USER}" "${HOME}"
-  chmod ug+rwX "${HOME}"
 fi
 
 # setup needed/expected dirs if not found
-SUBDIRS="config media media/completed media/raw media/movies encode logs db Music .MakeMKV"
+SUBDIRS="config media media/completed media/raw media/movies logs db Music .MakeMKV"
 for dir in $SUBDIRS ; do
   thisDir="${HOME}/${dir}"
   if [[ ! -d "${thisDir}" ]] ; then
     echo "creating dir ${thisDir}"
-    mkdir -p -m 0755 "${thisDir}"
-    chown "${USER}.${USER}" "${thisDir}"
+    mkdir -p -m 0777 "${thisDir}"
+    chown -R "${USER}.${USER}" "${thisDir}"
   fi
 done
 if [[ ! -f "${HOME}/config/arm.yaml" ]] ; then
@@ -36,7 +35,7 @@ if [[ ! -f "${HOME}/config/arm.yaml" ]] ; then
   chown "${USER}.${USER}" "${HOME}/config/arm.yaml"
 fi
 if [[ ! -f "${HOME}/config/apprise.yaml" ]] ; then
-  echo "creating example ARM config ${HOME}/config/apprise.yaml"
+  echo "creating example apprise config ${HOME}/config/apprise.yaml"
   cp /opt/arm/docs/apprise.yaml "${HOME}/config/apprise.yaml"
   chown "${USER}.${USER}" "${HOME}/config/apprise.yaml"
 fi
