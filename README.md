@@ -76,7 +76,7 @@ docker run -d \
    --name "arm-rippers" \
    1337server/automatic-ripping-machine:latest
 ```
-**The UID and GID must exists outside the container**
+**The UID and GID must exist outside the container**
 
 for more details please use [the wiki](https://github.com/1337-server/automatic-ripping-machine/wiki/docker)
  
