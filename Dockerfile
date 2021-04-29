@@ -34,6 +34,7 @@ RUN \
     python3-venv \
     udev \
     wget \
+    build-essential \
     && \
   DEBIAN_FRONTEND=noninteractive apt clean -y && \
   rm -rf /var/lib/apt/lists/* 
@@ -50,7 +51,7 @@ FROM base as libdvd
 RUN \
   bash /root/add-ppa.sh ppa:mc3man/focal6 && \
   apt update -y && \
-  DEBIAN_FRONTEND=noninteractive apt install -y libdvd-pkg && \
+  DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends libdvd-pkg && \
   DEBIAN_FRONTEND=noninteractive dpkg-reconfigure libdvd-pkg && \
   DEBIAN_FRONTEND=noninteractive apt clean -y && \
   rm -rf /var/lib/apt/lists/*
