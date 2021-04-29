@@ -503,7 +503,8 @@ if __name__ == "__main__":
     else:
         (job.disctype, job.label) = utils.detect_disctype(devpath)
     logfile = logger.setup_logging(job)
-    print("Log: " + logfile)
+    logging.info(job.disctype, job.label)
+    logging.info("Log: " + logfile)
     logging.info("Starting ARM processing at " + str(datetime.datetime.now()))
 
     utils.check_db_version(cfg['INSTALLPATH'], cfg['DBFILE'])

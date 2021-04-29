@@ -13,9 +13,7 @@ from arm.ripper import music_brainz
 def identify_audio_cd(job):
     """
     Get the title for audio cds to use for the logfile name.
-
     Needs the job class passed into it so it can be forwarded to mb
-
     return - only the logfile - setup_logging() adds the full path
     """
     # Use the music label if we can find it - defaults to music_cd.log
@@ -56,14 +54,17 @@ def setup_logging(job):
         logfull = os.path.join(cfg['LOGPATH'], new_log_file) if os.path.isfile(temp_log_full) \
             else os.path.join(cfg['LOGPATH'], str(job.label) + ".log")
         job.logfile = logfile
-
+    # Remove all handlers associated with the root logger object.
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
     # Debug formatting
     if cfg['LOGLEVEL'] == "DEBUG":
-        logging.basicConfig(filename=logfull, format='[%(asctime)s] %(levelname)s '
-                                                     'ARM: %(module)s.%(funcName)s %(message)s',
+        logging.basicConfig(filename=logfull,
+                            format='[%(asctime)s] %(levelname)s ARM: %(module)s.%(funcName)s %(message)s',
                             datefmt=cfg['DATE_FORMAT'], level=cfg['LOGLEVEL'])
     else:
-        logging.basicConfig(filename=logfull, format='[%(asctime)s] %(levelname)s ARM: %(message)s',
+        logging.basicConfig(filename=logfull,
+                            format='[%(asctime)s] %(levelname)s ARM: %(message)s',
                             datefmt=cfg['DATE_FORMAT'], level=cfg['LOGLEVEL'])
 
     # This stops apprise spitting our secret keys when users posts online
