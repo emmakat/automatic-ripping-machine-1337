@@ -8,8 +8,8 @@ FROM ubuntu:20.04 as base
 
 # override at runtime to match user that ARM runs as local user
 ENV RUN_AS_USER=true
-ENV UID=1001
-ENV GID=1001
+ENV UID=1000
+ENV GID=1000
 # override at runtime to change makemkv key
 ENV MAKEMKV_APP_KEY=""
 
@@ -194,10 +194,10 @@ CMD ["python3", "/opt/arm/arm/runui.py"]
 
 
 # pass build args for labeling
-ARG image_revision=2.5.2
-ARG image_created="2021-03-20"
+ARG image_revision=2.5.3
+ARG image_created="2021-04-29"
 
 LABEL org.opencontainers.image.source=https://github.com/1337-server/automatic-ripping-machine
-LABEL org.opencontainers.image.revision="2.5.2"
-LABEL org.opencontainers.image.created="2021-03-20"
+LABEL org.opencontainers.image.revision="2.5.3"
+LABEL org.opencontainers.image.created="2021-04-29"
 LABEL org.opencontainers.image.license=MIT

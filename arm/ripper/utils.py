@@ -1466,6 +1466,9 @@ def database_updater(args, job, wait_time=90):
     for i in range(wait_time):  # give up after the users wait period in seconds
         try:
             db.session.commit()
+            db.session.refresh(job)
+            logging.debug("successfully written to the database")
+            return True
         except Exception as e:
             if "locked" in str(e):
                 time.sleep(1)
@@ -1473,9 +1476,6 @@ def database_updater(args, job, wait_time=90):
             else:
                 logging.debug("Error: " + str(e))
                 raise RuntimeError(str(e))
-        else:
-            logging.debug("successfully written to the database")
-            return True
 
 
 def job_dupe_check(job):
