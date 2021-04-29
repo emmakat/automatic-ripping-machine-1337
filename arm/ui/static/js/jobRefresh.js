@@ -102,7 +102,9 @@ function addJobItem(job) {
                     <strong>';
     if (job['title_manual'] !== "None") {
         x += job["title_manual"] + ' ('+job['year']+')';
-    }else{
+    }else if (job['title_auto'] !== "None") {
+        x += job["title_auto"] + ' (' + job['year'] + ')';
+    }else {
         x += job["title"] + ' (' + job['year'] + ')';
     }
     x += '</strong>\

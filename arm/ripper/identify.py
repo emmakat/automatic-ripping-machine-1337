@@ -253,6 +253,8 @@ def get_video_details(job):
 
 def update_job(job, s):
     logging.debug(f"s =======  {s}")
+    if 'Search' not in s:
+        return None
     new_year = s['Search'][0]['Year']
     title = clean_for_filename(s['Search'][0]['Title'])
     logging.debug("Webservice successful.  New title is " + title + ".  New Year is: " + new_year)
@@ -295,7 +297,7 @@ def metadata_selector(job, title=None, year=None):
     elif cfg['METADATA_PROVIDER'].lower() == "omdb":
         logging.debug("provider omdb")
         x = call_omdb_api(str(title), str(year))
-        if x is not None:
+        if x is not None and x['Response']:
             update_job(job, x)
         return x
     logging.debug(cfg['METADATA_PROVIDER'])
