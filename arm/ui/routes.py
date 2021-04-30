@@ -356,6 +356,12 @@ def settings():
 
     This needs rewritten to be static
     """
+    jobs = db.session.query(Job).filter(Job.status.notin_(['fail', 'success'])).all()
+    if len(jobs) >= 1:
+        flash("You have active rips running!<br/>"
+              "Changing settings will stop/cancel/break all current running rips.<br/>"
+              "There is no way to continue a stopped/canceled/broken job!", "danger")
+        app.logger.debug("Warning - jobs running, will break jobs if saved.")
     x = ""
     arm_cfg_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../..", "arm.yaml")
     comments_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "comments.json")
