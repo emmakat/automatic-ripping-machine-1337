@@ -379,7 +379,7 @@ def get_x_jobs(job_status):
         except subprocess.CalledProcessError:
             app.logger.debug("Error while reading logfile for ETA")
             line = ""
-        app.logger.debug(line)
+        # app.logger.debug(line)
         job_status_bar = re.search(r"Encoding: task ([0-9] of [0-9]), ([0-9]{1,3}\.[0-9]{2}) %.{0,40}"
                                    r"ETA ([0-9hms]*?)\)(?!\\rEncod)", str(line))
         if job_status_bar:
@@ -389,15 +389,15 @@ def get_x_jobs(job_status):
             r[i]['eta'] = job_status_bar.group(3)
             r[i]['progress_round'] = int(float(r[i]['progress']))
 
-        app.logger.debug("job obj= " + str(j.get_d()))
+        # app.logger.debug("job obj= " + str(j.get_d()))
         x = j.get_d().items()
-        app.logger.debug("job obj.items= " + str(j.get_d().items()))
+        # app.logger.debug("job obj.items= " + str(j.get_d().items()))
         for key, value in x:
             if key != "config":
                 r[i][str(key)] = str(value)
             # logging.debug(str(key) + "= " + str(value))
         i += 1
-    app.logger.debug("Stuff = " + str(r))
+    app.logger.debug("Joblist = " + str(r))
     if jobs:
         app.logger.debug("jobs  - we have " + str(len(r)) + " jobs")
         return {"success": True, "mode": job_status, "results": r}
@@ -667,7 +667,7 @@ def metadata_selector(func, query=None, year=None, imdb_id=None):
     :return: json/dict object
     """
     if cfg['METADATA_PROVIDER'].lower() == "tmdb":
-        app.logger.debug("provider tmdb")
+        app.logger.debug(f"provider tmdb {func}")
         if func == "search":
             return tmdb_search(query, year)
         elif func == "get_details":
@@ -677,12 +677,13 @@ def metadata_selector(func, query=None, year=None, imdb_id=None):
                 return tmdb_find(imdb_id)
 
     elif cfg['METADATA_PROVIDER'].lower() == "omdb":
-        app.logger.debug("provider omdb")
+        app.logger.debug(f"provider omdb - {func} ")
         if func == "search":
             return call_omdb_api(query, year)
         elif func == "get_details":
             s = call_omdb_api(title=query, year=year, imdbID=imdb_id, plot="full")
-            s['background_url'] = None
+            if s:
+                s['background_url'] = None
             return s
     else:
         app.logger.debug(cfg['METADATA_PROVIDER'])
