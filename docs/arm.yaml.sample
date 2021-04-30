@@ -60,7 +60,7 @@ ALLOW_DUPLICATES: false
 # Number of Transcodes that runs at the same time.
 # Certain Video cards are limited to how many encodes they can run at the same time.
 # Also useful for deminishing returns on CPU based encodes.
-# 0 to disable
+# 0 disables any limits
 MAX_CONCURRENT_TRANSCODES: 0
 
 # Additional parameters for dd. e.g. "conv=noerror,sync" for ignoring read errors
@@ -68,7 +68,7 @@ DATA_RIP_PARAMETERS: ""
 
 # Set to one of "none", "musicbrainz", "freecddb"
 # if "musicbrainz" is used the disc information are asked from musicbrainz.org
-# if "none" is used no label is identified
+# if "none" is used ARM will not try to identify the CD
 GET_AUDIO_TITLE: "musicbrainz"
 
 ## Location of your ABCDE config file
@@ -79,16 +79,10 @@ ABCDE_CONFIG_FILE: "/home/arm/config/.abcde.conf"
 ## Directory setup ##
 #####################
 
-# Final directory of transcoded files
-# Ripped and transcoded files end up here
+# !!DO NOT CHANGE THESE HERE!! #
+# CHANGE THE -v POINTS ON THE DOCKER RUN # 
 ARMPATH: "/home/arm/media/completed/"
-
-# Path to raw MakeMKV directory
-# Destination for MakeMKV and source for HandBrake
 RAWPATH: "/home/arm/media/raw/"
-
-# Path to final media directory
-# Destination for final file.  Only used for movies that are positively identified
 MEDIA_DIR: "/home/arm/media/movies/"
 
 # Movie subdirectory name for "extras"
