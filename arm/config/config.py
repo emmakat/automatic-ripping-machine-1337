@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-# import re
 import yaml
 
 yamlfile = "/opt/arm/arm.yaml"

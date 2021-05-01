@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, SelectField, IntegerField, BooleanField, validators  # noqa: F401
+from wtforms import StringField, SubmitField, SelectField, IntegerField, BooleanField, validators, PasswordField  # noqa: F401
 from wtforms.validators import DataRequired
 
 
@@ -21,7 +21,6 @@ class ChangeParamsForm(FlaskForm):
                                                    ('music', 'Music'), ('data', 'Data')])
     # "music", "dvd", "bluray" and "data"
     MAINFEATURE = BooleanField('Main Feature')
-    # MAINFEATURE = SelectField('Main Feature: ', choices=[(1, 'Yes'), (0, 'No')])
     MINLENGTH = IntegerField('Minimum Length: ')
     MAXLENGTH = IntegerField('Maximum Length: ')
     submit = SubmitField('Submit')
@@ -39,4 +38,10 @@ class SettingsForm(FlaskForm):
     ARMPATH = StringField('ARMPATH', validators=[DataRequired()])
     RAWPATH = StringField('RAWPATH', validators=[DataRequired()])
     MEDIA_DIR = StringField('MEDIA_DIR', validators=[DataRequired()])
+    submit = SubmitField('Submit')
+
+
+class SetupForm(FlaskForm):
+    username = StringField('username', validators=[DataRequired()])
+    password = PasswordField('password', validators=[DataRequired()])
     submit = SubmitField('Submit')

@@ -17,7 +17,7 @@ from flask import Flask, render_template, make_response, abort, request, send_fi
 from arm.ui import app, db
 from arm.models.models import Job, Config, Track, User, Alembic_version, UISettings  # noqa: F401
 from arm.config.config import cfg
-from arm.ui.forms import TitleSearchForm, ChangeParamsForm, CustomTitleForm, SettingsForm
+from arm.ui.forms import TitleSearchForm, ChangeParamsForm, CustomTitleForm, SettingsForm, SetupForm
 from pathlib import Path, PurePath
 from flask.logging import default_handler  # noqa: F401
 from flask_login import LoginManager, login_required, current_user, login_user, UserMixin, logout_user  # noqa: F401
@@ -62,38 +62,17 @@ def setup():
     This function will do various checks to make sure everything can be setup for ARM
     Directory ups, create the db, etc
     """
-    perm_file = Path(PurePath(cfg['INSTALLPATH'], "installed"))
-    app.logger.debug("perm " + str(perm_file))
-    if perm_file.exists():
-        flash(str(perm_file) + " exists, setup cannot continue. To re-install please delete this file.", "danger")
-        app.logger.debug("perm exist GTFO")
-        return redirect('/setup-stage2')  # We push to setup-stage2 and let it decide where the user needs to go
     dir0 = Path(PurePath(cfg['DBFILE']).parent)
     dir1 = Path(cfg['ARMPATH'])
     dir2 = Path(cfg['RAWPATH'])
     dir3 = Path(cfg['MEDIA_DIR'])
     dir4 = Path(cfg['LOGPATH'])
-    app.logger.debug("dir0 " + str(dir0))
-    app.logger.debug("dir1 " + str(dir1))
-    app.logger.debug("dir2 " + str(dir2))
-    app.logger.debug("dir3 " + str(dir3))
-    app.logger.debug("dir4 " + str(dir4))
+    x = [dir0, dir1, dir2, dir3, dir4]
     try:
-        if not Path.exists(dir0):
-            os.makedirs(dir0)
-            flash(f"{dir0} was created successfully.")
-        if not Path.exists(dir1):
-            os.makedirs(dir1)
-            flash(f"{dir1} was created successfully.")
-        if not Path.exists(dir2):
-            os.makedirs(dir2)
-            flash(f"{dir2} was created successfully.")
-        if not Path.exists(dir3):
-            os.makedirs(dir3)
-            flash(f"{dir3} was created successfully.")
-        if not Path.exists(dir4):
-            os.makedirs(dir4)
-            flash(f"{dir4} was created successfully.")
+        for arm_dir in x:
+            if not Path.exists(arm_dir):
+                os.makedirs(arm_dir)
+                flash(f"{arm_dir} was created successfully.")
     except FileNotFoundError as e:
         flash(f"Creation of the directory {dir0} failed {e}", "danger")
         app.logger.debug(f"Creation of the directory failed - {e}")
@@ -105,10 +84,6 @@ def setup():
         if utils.setupdatabase():
             flash("Setup of the database was successful.", "success")
             app.logger.debug("Setup of the database was successful.")
-            perm_file = Path(PurePath(cfg['INSTALLPATH'], "installed"))
-            f = open(perm_file, "w")
-            f.write("boop!")
-            f.close()
             return redirect('/setup-stage2')
         else:
             flash("Couldn't setup database", "danger")
@@ -126,55 +101,66 @@ def setup_stage2():
     This is the second stage of setup this will allow the user to create an admin account
     this will also be the page for resetting the admin account password
     """
-    over = request.values.get('override') if request.method == 'POST' else request.args.get('override')
     try:
         # Return the user to login screen if we dont error when calling for any users
         users = User.query.all()
-        if users and over is None:
-            flash("over = " + over)
+        if users:
             flash('You cannot create more than 1 admin account')
             return redirect(url_for('login'))
     except Exception:
         # return redirect('/index')
         app.logger.debug("No admin account found")
 
-    save = False
-    try:
-        save = request.form['save']
-    except KeyError:
-        app.logger.debug("no post")
-
     # After a login for is submitted
-    if save:
+    form = SetupForm()
+    if form.validate_on_submit():
+        app.logger.debug("We valid")
         username = str(request.form['username']).strip()
         pass1 = str(request.form['password']).strip().encode('utf-8')
-        hash = bcrypt.gensalt(12)
+        hashed = bcrypt.gensalt(12)
+        hashedpassword = bcrypt.hashpw(pass1, hashed)
+        user = User(email=username, password=hashedpassword, hashed=hashed)
+        db.session.add(user)
+        # app.logger.debug("user: " + username + " Pass:" + pass1.decode('utf-8'))
+        try:
+            db.session.commit()
+        except Exception as e:
+            flash(str(e), "danger")
+            return redirect('/setup-stage2')
+        else:
+            return redirect(url_for('login'))
+    return render_template('setup.html', form=form)
 
-        if username and pass1:
-            user = User.query.filter_by(email=username).first()
-            hashedpassword = bcrypt.hashpw(pass1, hash)
-            if user is None:
-                user = User(email=username, password=hashedpassword, hashed=hash)
-                db.session.add(user)
-            else:
-                user.password = hashedpassword
-                user.hash = hash
-                app.logger.debug("hashedpass = " + str(hashedpassword))
-            app.logger.debug("user: " + username + " Pass:" + pass1.decode('utf-8'))
-            app.logger.debug("user db " + str(user))
 
+@app.route('/update_password', methods=['GET', 'POST'])
+@login_required
+def update_password():
+    """
+    updating password for the admin account
+    """
+    # After a login for is submitted
+    form = SetupForm()
+    if form.validate_on_submit():
+        username = str(request.form['username']).strip()
+        new_password = str(request.form['newpassword']).strip().encode('utf-8')
+        user = User.query.filter_by(email=username).first()
+        password = user.password
+        hashed = user.hash
+        # our new one
+        login_hashed = bcrypt.hashpw(str(request.form['password']).strip().encode('utf-8'), hashed)
+        if login_hashed == password:
+            hashed_password = bcrypt.hashpw(new_password, hashed)
+            user.password = hashed_password
+            user.hash = hashed
             try:
                 db.session.commit()
+                flash("Password successfully updated", "success")
+                return redirect("logout")
             except Exception as e:
                 flash(str(e), "danger")
-                return redirect('/setup-stage2')
-            else:
-                return redirect(url_for('login'))
         else:
-            app.logger.debug("user: " + str(username) + " Pass:" + pass1)
-            flash("error something was blank")
-            return redirect('/setup-stage2')
-    return render_template('setup.html', title='setup', override=over)
+            flash("Password couldn't be updated. Problem with old password", "danger")
+    return render_template('update_password.html', form=form)
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -193,40 +179,29 @@ def login():
     # if user is logged in
     if current_user.is_authenticated:
         return redirect('/index')
-    save = False
-    try:
-        save = request.form['save']
-    except KeyError:
-        app.logger.debug("no post")
 
-    # After a login for is submitted
-    if save:
+    form = SetupForm()
+    if form.validate_on_submit():
         email = request.form['username']
         # TODO: we know there is only ever 1 admin account,
         #  so we can pull it and check against it locally
         user = User.query.filter_by(email=str(email).strip()).first()
         if user is None:
-            return render_template('login.html', success="false", raw='Invalid username')
+            flash('Invalid username', 'danger')
+            return render_template('login.html', form=form)
         app.logger.debug("user= " + str(user))
-        # our previous pass
+        # our pass
         password = user.password
         hashed = user.hash
-        # our new one
+        # hashed pass the user provided
         loginhashed = bcrypt.hashpw(str(request.form['password']).strip().encode('utf-8'), hashed)
-        # app.logger.debug(loginhashed)
-        # app.logger.debug(password)
-
         if loginhashed == password:
             login_user(user)
             app.logger.debug("user was logged in - redirecting")
             return redirect('/index')
-        elif user is None:
-            return render_template('login.html', success="false", raw='Invalid username')
         else:
-            return render_template('login.html', success="false", raw='Invalid Password')
-
-        # return redirect(url_for('home'))
-    return render_template('login.html', title='Sign In')
+            flash('Password is wrong', 'danger')
+    return render_template('login.html', form=form)
 
 
 @app.route('/database')
@@ -238,64 +213,13 @@ def database():
     Currently outputs every job from the databse - this can cause serious slow downs with + 3/4000 entries
     Pagination is needed!
     """
-    # Success gives the user feedback to let them know if the delete worked
-    success = False
-    saved = False
     # Check for database file
     if os.path.isfile(cfg['DBFILE']):
-        # jobs = Job.query.filter_by(status="active")
         jobs = Job.query.filter_by().order_by(db.desc(Job.job_id))
     else:
         app.logger.error('ERROR: /database no database, file doesnt exist')
         jobs = {}
-    # Try to see if we have the arg set, if not ignore the error
-    try:
-        mode = request.args['mode']
-        jobid = request.args['jobid']
-        saved = True
-    except Exception:
-        app.logger.debug("/database - no vars set")
-
-    if saved:
-        try:
-            # Find the job the user wants to delete
-            if mode == 'delete' and jobid is not None:
-                # User wants to wipe the whole database
-                # Make a backup and everything
-                # The user can only access this by typing it manually
-                if jobid == 'all':
-                    if os.path.isfile(cfg['DBFILE']):
-                        # Make a backup of the database file
-                        cmd = f'cp {cfg["DBFILE"]} {cfg["DBFILE"]}.bak'
-                        app.logger.info(f"cmd  -  {cmd}")
-                        os.system(cmd)
-                    Track.query.delete()
-                    Job.query.delete()
-                    Config.query.delete()
-                    db.session.commit()
-                    success = True
-                    """elif jobid == "logfile":
-                    #  The user can only access this by typing it manually
-                    #  This shouldnt be left on when on a full server
-                    logfile = request.args['file']
-                    Job.query.filter_by(title=logfile).delete()
-                    db.session.commit()
-                    """
-                    # Not sure this is the greatest way of handling this
-                else:
-                    Track.query.filter_by(job_id=jobid).delete()
-                    Job.query.filter_by(job_id=jobid).delete()
-                    Config.query.filter_by(job_id=jobid).delete()
-                    db.session.commit()
-                    success = True
-        # If we run into problems with the datebase changes
-        # error out to the log and roll back
-        except Exception as err:
-            db.session.rollback()
-            app.logger.error(f"Error:db-1 {err}")
-            success = False
-
-    return render_template('database.html', jobs=jobs, success=success, date_format=cfg['DATE_FORMAT'])
+    return render_template('database.html', jobs=jobs, date_format=cfg['DATE_FORMAT'])
 
 
 @app.route('/json', methods=['GET', 'POST'])
@@ -351,11 +275,10 @@ def feed_json():
 def settings():
     """
     The settings page - allows the user to update the arm.yaml without needing to open a text editor
-    Also triggers a restart of flask for debugging.
     This wont work well if flask isnt run in debug mode
-
     This needs rewritten to be static
     """
+    # Check for current jobs - show a warning if jobs are running
     jobs = db.session.query(Job).filter(Job.status.notin_(['fail', 'success'])).all()
     if len(jobs) >= 1:
         flash("You have active rips running!<br/>"
@@ -364,25 +287,8 @@ def settings():
         app.logger.debug("Warning - jobs running, will break jobs if saved.")
     x = ""
     arm_cfg_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../..", "arm.yaml")
-    comments_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "comments.json")
-    try:
-        with open(comments_file, "r") as f:
-            try:
-                comments = json.load(f)
-            except Exception as e:
-                app.logger.debug(f"Error with comments file. {e}")
-                return render_template("error.html", error=str(e))
-    except FileNotFoundError:
-        return render_template("error.html", error="Couldn't find the comment.json file")
-    # Import the cfg again as we want the latest values, not stale.
-    try:
-        with open(arm_cfg_file, "r") as f:
-            try:
-                cfg = yaml.load(f, Loader=yaml.FullLoader)
-            except Exception:
-                cfg = yaml.safe_load(f)  # For older versions use this
-    except FileNotFoundError:
-        return render_template("error.html", error="Couldn't find the arm.yaml file")
+    comments = utils.generate_comments()
+    cfg = utils.get_settings(arm_cfg_file)
     form = SettingsForm()
     if form.validate_on_submit():
         # For testing
@@ -392,7 +298,7 @@ def settings():
         # This really should be hard coded.
         for k, v in x.items():
             if k != "csrf_token":
-                if k == "ARMPATH":
+                if k == "COMPLETED_PATH":
                     arm_cfg += "\n" + comments['ARM_CFG_GROUPS']['DIR_SETUP']
                 elif k == "WEBSERVER_IP":
                     arm_cfg += "\n" + comments['ARM_CFG_GROUPS']['WEB_SERVER']
@@ -409,9 +315,10 @@ def settings():
                     arm_cfg += "\n" + comments['ARM_CFG_GROUPS']['NOTIFY_PERMS']
                 elif k == "APPRISE":
                     arm_cfg += "\n" + comments['ARM_CFG_GROUPS']['APPRISE']
-
-                arm_cfg += "\n" + comments[str(k)] + "\n" if comments[str(k)] != "" else ""
-
+                try:
+                    arm_cfg += "\n" + comments[str(k)] + "\n" if comments[str(k)] != "" else ""
+                except KeyError:
+                    arm_cfg += "\n"
                 try:
                     post_value = int(v)
                     arm_cfg += f"{k}: {post_value}\n"
@@ -425,24 +332,10 @@ def settings():
                         else:
                             arm_cfg += f"{k}: \"{v}\"\n"
                 # app.logger.debug(f"\n{k} = {v} ")
-
         # app.logger.debug(f"arm_cfg= {arm_cfg}")
         with open(arm_cfg_file, "w") as f:
             f.write(arm_cfg)
             f.close()
-        # Now we update the file modified time to get flask to restart
-        import datetime
-
-        def set_file_last_modified(file_path, dt):
-            dt_epoch = dt.timestamp()
-            try:
-                os.utime(file_path, (dt_epoch, dt_epoch))
-            except OSError:
-                app.logger.debug("Dont have permission to update filetime ")
-        now = datetime.datetime.now()
-        arm_main = os.path.join(os.path.dirname(os.path.abspath(__file__)), "routes.py")
-        set_file_last_modified(arm_main, now)
-
         flash("Setting saved successfully!", "success")
         return redirect(url_for('settings'))
     # If we get to here there was no post data
@@ -454,9 +347,7 @@ def settings():
 def ui_settings():
     """
     The settings page - allows the user to update the arm.yaml without needing to open a text editor
-    Also triggers a restart of flask for debugging.
     This wont work well if flask isnt run in debug mode
-
     This needs rewritten to be static
     """
     try:
@@ -760,9 +651,9 @@ def home():
     """
     The main homepage showing current rips and server stats
     """
-    # app.logger.info('Processing default request')
-    # app.logger.debug('DEBUGGING')
-    # app.logger.error('ERROR Inside /logreader')
+    # \\\app.\\logger.info('Processing default request')
+    # \\\app.\\logger.debug('DEBUGGING')
+    # \\\app.\\logger.error('ERROR Inside /logreader')
 
     # Hard drive space
     try:
@@ -778,7 +669,9 @@ def home():
         mfreegb = 0
         media_percent = 0
         app.logger.debug("ARM folders not found")
-        flash("There was a problem accessing the ARM folders. Please make sure you have setup the ARMui", "danger")
+        flash("There was a problem accessing the ARM folders. Please make sure you have setup ARM<br/>"
+              "Setup can be started by visiting <a href=\"/setup\">setup page</a> ARM will not work correctly until"
+              "until you have added an admin account", "danger")
         # We could check for the install file here  and then error out if we want
     #  RAM
     memory = psutil.virtual_memory()
@@ -801,7 +694,6 @@ def home():
         temp = temps = None
 
     if os.path.isfile(cfg['DBFILE']):
-        # jobs = Job.query.filter_by(status="active")
         try:
             jobs = db.session.query(Job).filter(Job.status.notin_(['fail', 'success'])).all()
         except Exception:
@@ -815,17 +707,12 @@ def home():
             except subprocess.CalledProcessError:
                 app.logger.debug("Error while reading logfile for ETA")
                 line = ""
-            # job_status = re.search("([0-9]{1,2}\.[0-9]{2}) %.*ETA ([0-9]{2})h([0-9]{2})m([0-9]{2})s", str(line))
-            # ([0-9]{1,3}\.[0-9]{2}) %.*(?!ETA) ([0-9hms]*?)\)  # This is more dumb but it returns with the h m s
-            # job_status = re.search(r"([0-9]{1,2}\.[0-9]{2}) %.*ETA\s([0-9hms]*?)\)", str(line))
-            # This correctly get the very last ETA and %
             job_status = re.search(r"Encoding: task ([0-9] of [0-9]), ([0-9]{1,3}\.[0-9]{2}) %.{0,40}"
                                    r"ETA ([0-9hms]*?)\)(?!\\rEncod)", str(line))
             if job_status:
                 app.logger.debug(str(job_status.group(1)))
                 job.stage = job_status.group(1)
                 job.progress = job_status.group(2)
-                # job.eta = job_status.group(2)+":"+job_status.group(3)+":"+job_status.group(4)
                 job.eta = job_status.group(3)
                 app.logger.debug("job.progress = " + str(job.progress))
                 x = job.progress
@@ -1021,7 +908,6 @@ def send_movies():
                 r['failed'][i][str(key)] = str(value)
                 # app.logger.debug(str(key) + "= " + str(value))
             i += 1
-    # return {'success': True, 'mode': 'search', 'results': r}
     return render_template('send_movies.html', sent=r['sent'], failed=r['failed'], full=r)
 
 
@@ -1036,7 +922,6 @@ def get_processor_name():
         return subprocess.check_output(['/usr/sbin/sysctl', "-n", "machdep.cpu.brand_string"]).strip()
     elif platform.system() == "Linux":
         command = "cat /proc/cpuinfo"
-        # return \
         fulldump = str(subprocess.check_output(command, shell=True).strip())
         # Take any float trailing "MHz", some whitespace, and a colon.
         speeds = re.search(r"\\nmodel name\\t:.*?GHz\\n", fulldump)
@@ -1056,7 +941,6 @@ def get_processor_name():
             amd_name = amd_name_full.group(1)
             amd_mhz = re.search(r"cpu MHz(?:\\t)*: ([.0-9]*)\\n", fulldump)  # noqa: W605
             if amd_mhz:
-                # amd_ghz = re.sub('[^.0-9]', '', amd_mhz.group())
                 amd_ghz = round(float(amd_mhz.group(1)) / 1000, 2)  # this is a good idea
                 return str(amd_name) + " @ " + str(amd_ghz) + " GHz"
     return None  # We didnt find our cpu

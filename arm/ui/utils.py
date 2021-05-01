@@ -8,6 +8,7 @@ import psutil
 import requests
 import bcrypt  # noqa: F401
 import html
+import yaml
 
 from pathlib import Path
 from arm.config.config import cfg
@@ -325,8 +326,9 @@ def job_dupe_check(crc_id):
              False if we didnt find any with the same crc
               - Will also return None as a secondary param
     """
-    # TODO possibly only grab hasnicetitles ?
-    jobs = Job.query.filter_by(crc_id=crc_id, status="success")
+    if crc_id is None:
+        return False, None
+    jobs = Job.query.filter_by(crc_id=crc_id, status="success", hasnicetitle=True)
     # app.logger.debug("search - posts=" + str(jobs))
     r = {}
     i = 0
@@ -755,3 +757,17 @@ def fix_permissions(j_id):
         app.logger.error(err)
         d = {"success": False, "mode": "fixperms", "Error": str(err), "ts": str(ts)}
     return d
+
+
+def get_settings(arm_cfg_file):
+    try:
+        with open(arm_cfg_file, "r") as f:
+            try:
+                cfg = yaml.load(f, Loader=yaml.FullLoader)
+            except Exception as e:
+                app.logger.debug(e)
+                cfg = yaml.safe_load(f)  # For older versions use this
+    except FileNotFoundError as e:
+        app.logger.debug(e)
+        cfg = {}
+    return cfg
