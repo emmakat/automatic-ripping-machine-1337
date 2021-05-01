@@ -298,7 +298,7 @@ def settings():
         # This really should be hard coded.
         for k, v in x.items():
             if k != "csrf_token":
-                if k == "COMPLETED_PATH":
+                if k == "ARMPATH":
                     arm_cfg += "\n" + comments['ARM_CFG_GROUPS']['DIR_SETUP']
                 elif k == "WEBSERVER_IP":
                     arm_cfg += "\n" + comments['ARM_CFG_GROUPS']['WEB_SERVER']
