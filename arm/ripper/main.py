@@ -17,9 +17,12 @@ import psutil  # noqa E402
 from arm.ripper import logger, utils, makemkv, handbrake, identify  # noqa: E402
 from arm.config.config import cfg  # noqa: E402
 
-from arm.ripper.getkeys import grabkeys  # noqa: E402
+from arm.ripper.getkeys import grab_keys  # noqa: E402
 from arm.models.models import Job, Config  # noqa: E402
 from arm.ui import app, db  # noqa E402
+
+NOTIFY_TITLE = "ARM notification"
+PROCESS_COMPLETE = " processing complete. "
 
 
 def entry():
@@ -48,42 +51,19 @@ def log_arm_params(job):
 
     # log arm parameters
     logging.info("**** Logging ARM variables ****")
-    logging.info("devpath: " + str(job.devpath))
-    logging.info("mountpoint: " + str(job.mountpoint))
-    logging.info("title: " + str(job.title))
-    logging.info("year: " + str(job.year))
-    logging.info("video_type: " + str(job.video_type))
-    logging.info("hasnicetitle: " + str(job.hasnicetitle))
-    logging.info("label: " + str(job.label))
-    logging.info("disctype: " + str(job.disctype))
+    for key in ("devpath", "mountpoint", "title", "year", "video_type",
+                "hasnicetitle", "label", "disctype"):
+        logging.info(key + ": " + str(getattr(job, key)))
     logging.info("**** End of ARM variables ****")
     logging.info("**** Logging config parameters ****")
-    logging.info("skip_transcode: " + str(job.config.SKIP_TRANSCODE))
-    logging.info("mainfeature: " + str(job.config.MAINFEATURE))
-    logging.info("minlength: " + job.config.MINLENGTH)
-    logging.info("maxlength: " + job.config.MAXLENGTH)
-    logging.info("videotype: " + job.config.VIDEOTYPE)
-    logging.info("manual_wait: " + str(job.config.MANUAL_WAIT))
-    logging.info("wait_time: " + str(job.config.MANUAL_WAIT_TIME))
-    logging.info("ripmethod: " + job.config.RIPMETHOD)
-    logging.info("mkv_args: " + job.config.MKV_ARGS)
-    logging.info("delrawfile: " + str(job.config.DELRAWFILES))
-    logging.info("hb_preset_dvd: " + job.config.HB_PRESET_DVD)
-    logging.info("hb_preset_bd: " + job.config.HB_PRESET_BD)
-    logging.info("hb_args_dvd: " + job.config.HB_ARGS_DVD)
-    logging.info("hb_args_bd: " + job.config.HB_ARGS_BD)
-    logging.info("logfile: " + logfile)
-    logging.info("armpath: " + job.config.ARMPATH)
-    logging.info("rawpath: " + job.config.RAWPATH)
-    logging.info("media_dir: " + job.config.MEDIA_DIR)
-    logging.info("extras_sub: " + job.config.EXTRAS_SUB)
-    logging.info("emby_refresh: " + str(job.config.EMBY_REFRESH))
-    logging.info("emby_server: " + job.config.EMBY_SERVER)
-    logging.info("emby_port: " + job.config.EMBY_PORT)
-    logging.info("notify_rip: " + str(job.config.NOTIFY_RIP))
-    logging.info("notify_transcode " + str(job.config.NOTIFY_TRANSCODE))
-    #  Added from pull 366
-    logging.info("max_concurrent_transcodes " + str(job.config.MAX_CONCURRENT_TRANSCODES))
+    for key in ("SKIP_TRANSCODE", "MAINFEATURE", "MINLENGTH", "MAXLENGTH",
+                "VIDEOTYPE", "MANUAL_WAIT", "MANUAL_WAIT_TIME", "RIPMETHOD",
+                "MKV_ARGS", "DELRAWFILES", "HB_PRESET_DVD", "HB_PRESET_BD",
+                "HB_ARGS_DVD", "HB_ARGS_BD", "RAWPATH", "ARMPATH",
+                "MEDIA_DIR", "EXTRAS_SUB", "EMBY_REFRESH", "EMBY_SERVER",
+                "EMBY_PORT", "NOTIFY_RIP", "NOTIFY_TRANSCODE",
+                "MAX_CONCURRENT_TRANSCODES"):
+        logging.info(key.lower() + ": " + str(cfg.get(key, '<not given>')))
     logging.info("**** End of config parameters ****")
 
 
@@ -127,6 +107,84 @@ def check_ip():
             return '127.0.0.1'
     else:
         return host
+
+
+def skip_transcode(job, hb_out_path, hb_in_path, mkv_out_path, type_sub_folder):
+    """
+    For when skipping transcode in enabled
+    """
+    logging.info("SKIP_TRANSCODE is true.  Moving raw mkv files.")
+    logging.info("NOTE: Identified main feature may not be actual main feature")
+    files = os.listdir(mkv_out_path)
+    final_directory = hb_out_path
+    if job.video_type == "movie":
+        logging.debug(f"Videotype: {job.video_type}")
+        # if videotype is movie, then move biggest title to media_dir
+        # move the rest of the files to the extras folder
+
+        # find largest filesize
+        logging.debug("Finding largest file")
+        largest_file_name = ""
+        for f in files:
+            # initialize largest_file_name
+            if largest_file_name == "":
+                largest_file_name = f
+            temp_path_f = os.path.join(hb_in_path, f)
+            temp_path_largest = os.path.join(hb_in_path, largest_file_name)
+            if os.stat(temp_path_f).st_size > os.stat(temp_path_largest).st_size:
+                largest_file_name = f
+        # largest_file should be largest file
+        logging.debug(f"Largest file is: {largest_file_name}")
+        temp_path = os.path.join(hb_in_path, largest_file_name)
+        if os.stat(temp_path).st_size > 0:  # sanity check for filesize
+            for file in files:
+                # move main into media_dir
+                # move others into extras folder
+                if file == largest_file_name:
+                    # largest movie
+                    utils.move_files(hb_in_path, file, job, True)
+                else:
+                    # other extras
+                    if not str(cfg["EXTRAS_SUB"]).lower() == "none":
+                        utils.move_files(hb_in_path, file, job, False)
+                    else:
+                        logging.info(f"Not moving extra: {file}")
+        # Change final path (used to set permissions)
+        final_directory = os.path.join(cfg["MEDIA_DIR"], str(type_sub_folder),
+                                       f"{job.title} ({job.year})")
+        # Clean up
+        logging.debug(f"Attempting to remove extra folder in RAW_PATH: {hb_out_path}")
+        if hb_out_path != final_directory:
+            try:
+                shutil.rmtree(hb_out_path)
+                logging.debug(f"Removed sucessfully: {hb_out_path}")
+            except Exception:
+                logging.debug(f"Failed to remove: {hb_out_path}")
+    else:
+        # if videotype is not movie, then move everything
+        # into 'Unidentified' folder
+        logging.debug("Videotype: " + job.video_type)
+
+        for f in files:
+            mkvoutfile = os.path.join(mkv_out_path, f)
+            logging.debug(f"Moving file: {mkvoutfile} to: {mkv_out_path} {f}")
+            shutil.move(mkvoutfile, hb_out_path)
+    # remove raw files, if specified in config
+    if cfg["DELRAWFILES"]:
+        logging.info("Removing raw files")
+        shutil.rmtree(mkv_out_path)
+
+    utils.set_permissions(job, final_directory)
+    utils.notify(job, NOTIFY_TITLE, str(job.title) + PROCESS_COMPLETE)
+    logging.info("ARM processing complete")
+    # WARN  : might cause issues
+    # We need to update our job before we quit
+    # It should be safe to do this as we aren't waiting for transcode
+    job.status = "success"
+    job.path = hb_out_path
+    db.session.commit()
+    utils.eject(job.devpath)
+    sys.exit()
 
 
 def main(logfile, job):
@@ -203,17 +261,20 @@ def main(logfile, job):
 
     log_arm_params(job)
     check_fstab()
-
-    if job.config.HASHEDKEYS:
-        logging.info("Getting MakeMKV hashed keys for UHD rips")
-        grabkeys()
+    grab_keys(job.config.HASHEDKEYS)
 
     #  Entry point for dvd/bluray
     if job.disctype in ["dvd", "bluray"]:
         # get filesystem in order
-        #  If we have a nice title/confirmed name use the MEDIA_DIR and not the ARM unidentified folder
+        # if job.hasnicetitle:
+        if job.video_type == "movie":
+            type_sub_folder = "movies"
+        elif job.video_type == "series":
+            type_sub_folder = "tv"
+        else:
+            type_sub_folder = "unidentified"
         if job.hasnicetitle:
-            if job.year != "0000" or job.year != "":
+            if job.year and job.year != "0000" and job.year != "":
                 hboutpath = os.path.join(job.config.MEDIA_DIR, str(job.title) + " (" + str(job.year) + ")")
             else:
                 hboutpath = os.path.join(job.config.MEDIA_DIR, str(job.title))
@@ -230,7 +291,7 @@ def main(logfile, job):
                 #  if we have a nice title, set the folder to MEDIA_DIR and not the unidentified ARMPATH
                 if job.hasnicetitle:
                     #  Dont use the year if its  0000
-                    if job.year != "0000" or job.year != "":
+                    if job.year and job.year != "0000" and job.year != "":
                         hboutpath = os.path.join(job.config.MEDIA_DIR, f"{job.title} ({job.year}) {ts}")
                     else:
                         hboutpath = os.path.join(job.config.MEDIA_DIR, f"{job.title} {ts}")
@@ -255,7 +316,7 @@ def main(logfile, job):
                 job.status = "fail"
                 db.session.commit()
                 sys.exit()
-
+        mkvoutpath = None
         logging.info("Processing files to: " + hboutpath)
 
         #  entry point for bluray or dvd with MAINFEATURE off and RIPMETHOD mkv
@@ -283,85 +344,7 @@ def main(logfile, job):
 
             # Entry point for not transcoding
             if job.config.SKIP_TRANSCODE and job.config.RIPMETHOD == "mkv":
-                logging.info("SKIP_TRANSCODE is true.  Moving raw mkv files.")
-                logging.info("NOTE: Identified main feature may not be actual main feature")
-                files = os.listdir(mkvoutpath)
-                final_directory = hboutpath
-                if job.video_type == "movie":
-                    logging.debug("Videotype: " + job.video_type)
-                    # if videotype is movie, then move biggest title to media_dir
-                    # move the rest of the files to the extras folder
-
-                    # find largest filesize
-                    logging.debug("Finding largest file")
-                    largest_file_name = ""
-                    for f in files:
-                        # initialize largest_file_name
-                        if largest_file_name == "":
-                            largest_file_name = f
-                        temp_path_f = os.path.join(hbinpath, f)
-                        temp_path_largest = os.path.join(hbinpath, largest_file_name)
-                        # os.path.join(cfg['MEDIA_DIR'] + videotitle)
-                        # if cur file size > largest_file size
-                        if (os.stat(temp_path_f).st_size > os.stat(temp_path_largest).st_size):
-                            largest_file_name = f
-                    # largest_file should be largest file
-                    logging.debug("Largest file is: " + largest_file_name)
-                    temp_path = os.path.join(hbinpath, largest_file_name)
-                    if (os.stat(temp_path).st_size > 0):  # sanity check for filesize
-                        for f in files:
-                            # move main into media_dir
-                            # move others into extras folder
-                            if (f == largest_file_name):
-                                # largest movie
-                                # Encorporating Rajlaud's fix #349
-                                utils.move_files(hbinpath, f, job, True)
-                            else:
-                                # other extras
-                                if not str(job.config.EXTRAS_SUB).lower() == "none":
-                                    # Encorporating Rajlaud's fix #349
-                                    utils.move_files(hbinpath, f, job, False)
-                                else:
-                                    logging.info("Not moving extra: " + f)
-                    # Change final path (used to set permissions)
-                    final_directory = os.path.join(job.config.MEDIA_DIR, str(job.title) + " (" + str(job.year) + ")")
-                    # Clean up
-                    #  TODO: fix this so it doesnt remove everything
-                    logging.debug("Attempting to remove extra folder in ARMPATH: " + hboutpath)
-                    if hboutpath != final_directory:
-                        try:
-                            shutil.rmtree(hboutpath)
-                            logging.debug("Removed sucessfully: " + hboutpath)
-                        except Exception:
-                            logging.debug("Failed to remove: " + hboutpath)
-                else:
-                    # if videotype is not movie, then move everything
-                    # into 'Unidentified' folder
-                    logging.debug("Videotype: " + job.video_type)
-
-                    for f in files:
-                        mkvoutfile = os.path.join(mkvoutpath, f)
-                        logging.debug("Moving file: " + mkvoutfile + " to: " + mkvoutpath + f)
-                        shutil.move(mkvoutfile, hboutpath)
-                # remove raw files, if specified in config
-                if job.config.DELRAWFILES:
-                    logging.info("Removing raw files")
-                    shutil.rmtree(mkvoutpath)
-                # set file to default permissions '777'
-                if job.config.SET_MEDIA_PERMISSIONS:
-                    perm_result = utils.set_permissions(job, final_directory)
-                    logging.info("Permissions set successfully: " + str(perm_result))
-                utils.notify(job, "ARM notification", str(job.title) + " processing complete. ")
-                logging.info("ARM processing complete")
-                # WARN  : might cause issues
-                # We need to update our job before we quit
-                # It should be safe to do this as we arent waiting for transcode
-                job.status = "success"
-                db.session.commit()
-                # exit
-                utils.eject(job.devpath)
-                sys.exit()
-
+                skip_transcode(job, hboutpath, hbinpath, mkvoutpath, type_sub_folder)
         job.status = "transcoding"
         db.session.commit()
         if job.disctype == "bluray" and job.config.RIPMETHOD == "mkv":
@@ -378,85 +361,61 @@ def main(logfile, job):
         # check if there is a new title and change all filenames
         # time.sleep(60)
         db.session.refresh(job)
-        logging.debug("New Title is " + str(job.title_manual))
-        if job.title_manual and not job.updated:
-            newpath = utils.rename_files(hboutpath, job)
-            p = newpath
+        logging.debug("New Title is " + str(job.title))
+        if job.year and job.year != "0000" and job.year != "":
+            final_directory = os.path.join(job.config.MEDIA_DIR, str(type_sub_folder), f'{job.title} ({job.year})')
         else:
-            p = hboutpath
+            final_directory = os.path.join(job.config.MEDIA_DIR, str(type_sub_folder), str(job.title))
 
         # move to media directory
-        if job.video_type == "movie" and job.hasnicetitle:
-            # tracks = job.tracks.all()
-            tracks = job.tracks.filter_by(ripped=True)
+        tracks = job.tracks.filter_by(ripped=True)
+        if job.video_type == "movie":
             for track in tracks:
-                logging.info("Moving Movie " + str(track.filename) + " to " + str(p))
-                utils.move_files(p, track.filename, job, track.main_feature)
+                logging.info(f"Moving Movie {track.filename} to {final_directory}")
+                utils.move_files(hboutpath, track.filename, job, track.main_feature)
         # move to media directory
-        elif job.video_type == "series" and job.hasnicetitle:
-            # tracks = job.tracks.all()
-            tracks = job.tracks.filter_by(ripped=True)
+        elif job.video_type == "series":
             for track in tracks:
-                logging.info("Moving Series " + str(track.filename) + " to " + str(p))
-                utils.move_files(p, track.filename, job, False)
+                logging.info(f"Moving Series {track.filename} to {final_directory}")
+                utils.move_files(hboutpath, track.filename, job, False)
         else:
-            logging.info("job type is " + str(job.video_type) + "not movie or series, not moving.")
+            for track in tracks:
+                logging.info(f"Type is 'unknown' or we dont have a nice title - "
+                             f"Moving {track.filename} to {final_directory}")
+                utils.move_files(hboutpath, track.filename, job, track.main_feature)
             utils.scan_emby(job)
 
-        #  Test for dvd fail permissions
-        final_directory = p
-        if job.config.SET_MEDIA_PERMISSIONS:
-            perm_result = utils.set_permissions(job, final_directory)
-            logging.info("Permissions set successfully: " + str(perm_result))
-
-        # remove empty directories
-        #  Same issue of removing files that have already been identified
-        #  TODO: fully fix this, this is only a temp fix
-        if hboutpath != final_directory:
-            try:
-                os.rmdir(hboutpath)
-            except OSError:
-                logging.info(hboutpath + " directory is not empty.  Skipping removal. ")
-                pass
-
-        try:
-            newpath
-        except NameError:
-            logging.debug("'newpath' directory not found")
-        else:
-            logging.info("Found path " + newpath + ".  Attempting to remove it. ")
-            try:
-                os.rmdir(p)
-            except OSError:
-                logging.info(newpath + " directory is not empty.  Skipping removal. ")
-                pass
-
+        utils.set_permissions(job, final_directory)
         # Clean up bluray backup
-        # if job.disctype == "bluray" and cfg["DELRAWFILES"]:
-        if job.config.DELRAWFILES:
-            try:
-                shutil.rmtree(mkvoutpath)
-            except UnboundLocalError:
-                logging.debug("No raw files found to delete. ")
-            except OSError:
-                logging.debug("No raw files found to delete. ")
+        if cfg["DELRAWFILES"]:
+            raw_list = [mkvoutpath, hboutpath, hbinpath]
+            for raw_folder in raw_list:
+                try:
+                    logging.info(f"Removing raw path - {raw_folder}")
+                    if raw_folder != final_directory:
+                        shutil.rmtree(raw_folder)
+                except UnboundLocalError as e:
+                    logging.debug(f"No raw files found to delete in {raw_folder}- {e}")
+                except OSError as e:
+                    logging.debug(f"No raw files found to delete in {raw_folder} - {e}")
+                except TypeError as e:
+                    logging.debug(f"No raw files found to delete in {raw_folder} - {e}")
 
-        # report errors if any
-        if job.errors:
-            errlist = ', '.join(job.errors)
-            if job.config.NOTIFY_TRANSCODE:
-                utils.notify(job, "ARM notification",
-                             str(job.title) + " processing completed with errors. Title(s) " + str(
-                                 errlist) + " failed to complete. ")
-            logging.info("Transcoding completed with errors.  Title(s) " + str(errlist) + " failed to complete. ")
-        else:
-            if job.config.NOTIFY_TRANSCODE:
-                utils.notify(job, "ARM notification", str(job.title) + " processing complete. ")
-            logging.info("ARM processing complete")
+            # report errors if any
+        if cfg["NOTIFY_TRANSCODE"]:
+            if job.errors:
+                errlist = ', '.join(job.errors)
+                utils.notify(job, NOTIFY_TITLE,
+                             f" {job.title} processing completed with errors. "
+                             f"Title(s) {errlist} failed to complete. ")
+                logging.info(f"Transcoding completed with errors.  Title(s) {errlist} failed to complete. ")
+            else:
+                utils.notify(job, NOTIFY_TITLE, str(job.title) + PROCESS_COMPLETE)
+        logging.info("ARM processing complete")
 
     elif job.disctype == "music":
         if utils.rip_music(job, logfile):
-            utils.notify(job, "ARM notification", "Music CD: " + str(job.label) + " processing complete. ")
+            utils.notify(job, NOTIFY_TITLE, f"Music CD: {job.label} {PROCESS_COMPLETE}")
             utils.scan_emby(job)
             #  This shouldnt be needed. but to be safe
             job.status = "success"
@@ -475,11 +434,11 @@ def main(logfile, job):
             datapath = os.path.join(job.config.ARMPATH, str(job.label) + "_" + ts)
 
             if (utils.make_dir(datapath)) is False:
-                logging.info("Could not create data directory: " + str(datapath) + ".  Exiting ARM. ")
+                logging.info(f"Could not create data directory: {datapath}  Exiting ARM. ")
                 sys.exit()
 
         if utils.rip_data(job, datapath, logfile):
-            utils.notify(job, "ARM notification", "Data disc: " + str(job.label) + " copying complete. ")
+            utils.notify(job, NOTIFY_TITLE, f"Data disc: {job.label} copying complete. ")
             utils.eject(job.devpath)
         else:
             logging.info("Data rip failed.  See previous errors.  Exiting.")
@@ -492,7 +451,6 @@ def main(logfile, job):
 if __name__ == "__main__":
     args = entry()
     devpath = args.devpath
-    # print(devpath)
     if not utils.is_cdrom_ready(devpath):
         print("Drive empty or is not ready. Exiting ARM Ripper.", file=sys.stderr)
         sys.exit(1)
@@ -527,8 +485,6 @@ if __name__ == "__main__":
     logging.info("User is: " + getpass.getuser())
     logger.clean_up_logs(job.config.LOGPATH, job.config.LOGLIFE)
     logging.info("Job: " + str(job.label))
-
-    # a_jobs = Job.query.filter_by(status="active")
     a_jobs = db.session.query(Job).filter(Job.status.notin_(['fail', 'success'])).all()
 
     # Clean up abandoned jobs

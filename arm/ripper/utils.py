@@ -18,70 +18,35 @@ import re
 import datetime  # noqa: F401
 import psutil  # noqa E402
 
-# from arm.config.config import cfg
+from arm.config.config import cfg
 from arm.ui import app, db  # noqa E402
 from arm.models.models import Track, Job  # noqa: E402
 
 
 def notify(job, title, body):
-    """Send notificaions
+    """Send notifications
      title = title for notification
     body = body of the notification
     """
-    # Pushbullet
-    # pbul://{accesstoken}
-    if job.config.PB_KEY != "":
-        try:
-            # Create an Apprise instance
-            apobj = apprise.Apprise()
-            # A sample pushbullet notification
-            apobj.add('pbul://' + str(job.config.PB_KEY))
-            # Then notify these services any time you desire. The below would
-            # notify all of the services loaded into our Apprise object.
-            apobj.notify(
-                body,
-                title=title,
-            )
-        except:  # noqa: E722
-            logging.error("Failed sending Pushbullet apprise notification.  Continueing processing...")
-    # IFTTT
-    # ifttt://{WebhookID}@{Event}/
-    if job.config.IFTTT_KEY != "":
-        try:
-            # Create an Apprise instance
-            apobj = apprise.Apprise()
-            # A sample pushbullet notification
-            apobj.add('ifttt://' + str(job.config.IFTTT_KEY) + "@" + str(job.config.IFTTT_EVENT))
+    # Create an Apprise instance
+    apobj = apprise.Apprise()
+    if cfg["PB_KEY"] != "":
+        apobj.add('pbul://' + str(cfg["PB_KEY"]))
+    if cfg["IFTTT_KEY"] != "":
+        apobj.add('ifttt://' + str(cfg["IFTTT_KEY"]) + "@" + str(cfg["IFTTT_EVENT"]))
+    if cfg["PO_USER_KEY"] != "":
+        apobj.add('pover://' + str(cfg["PO_USER_KEY"]) + "@" + str(cfg["PO_APP_KEY"]))
+    try:
+        apobj.notify(body, title=title)
+    except Exception as e:  # noqa: E722
+        logging.error(f"Failed sending notifications. error:{e}. Continuing processing...")
 
-            # Then notify these services any time you desire. The below would
-            # notify all of the services loaded into our Apprise object.
-            apobj.notify(
-                body,
-                title=title,
-            )
-        except:  # noqa: E722
-            logging.error("Failed sending IFTTT apprise notification.  Continueing processing...")
-    # PUSHOVER
-    if job.config.PO_USER_KEY != "":
+    if cfg["APPRISE"] != "":
         try:
-            # Create an Apprise instance
-            apobj = apprise.Apprise()
-
-            apobj.add('pover://' + str(job.config.PO_USER_KEY) + "@" + str(job.config.PO_APP_KEY))
-            # Then notify these services any time you desire. The below would
-            # notify all of the services loaded into our Apprise object.
-            apobj.notify(
-                body,
-                title=title,
-            )
-        except:  # noqa: E722
-            logging.error("Failed sending PUSHOVER apprise notification.  continuing  processing...")
-    if job.config.APPRISE != "":
-        try:
-            apprise_notify(job.config.APPRISE, title, body)
-            logging.debug("apprise-config: " + str(job.config.APPRISE))
+            apprise_notify(cfg["APPRISE"], title, body)
+            logging.debug("apprise-config: " + str(cfg["APPRISE"]))
         except Exception as e:  # noqa: E722
-            logging.error("Failed sending apprise notification. " + str(e))
+            logging.error("Failed sending apprise notifications. " + str(e))
 
 
 def apprise_notify(apprise_cfg, title, body):
@@ -99,34 +64,6 @@ def apprise_notify(apprise_cfg, title, body):
     with open(yaml_file, "r") as f:
         cfg = yaml.load(f)
 
-    cmd = "apprise -vv -t \"{0}\" -b \"{1}\" dbus://".format(title, body)
-    cmd1 = "apprise -vv -t \"{0}\" -b \"{1}\" kde://".format(title, body)
-    cmd2 = "apprise -vv -t \"{0}\" -b \"{1}\" gnome://".format(title, body)
-    cmd3 = "apprise -vv -t \"{0}\" -b \"{1}\" windows://".format(title, body)
-    try:
-        logging.debug("Trying ##########" + cmd)
-        os.system(cmd)
-        # subprocess.call(cmd)
-    except Exception as e:  # noqa: E722
-        logging.error("Failed sending desktops apprise notification. ################ " + str(e))
-    try:
-        logging.debug("Trying ##########" + cmd1)
-        os.system(cmd1)
-        # subprocess.call(cmd)
-    except Exception as e:  # noqa: E722
-        logging.error("Failed sending desktops apprise notification. ################ " + str(e))
-    try:
-        logging.debug("Trying ##########" + cmd2)
-        os.system(cmd2)
-        # subprocess.call(cmd)
-    except Exception as e:  # noqa: E722
-        logging.error("Failed sending desktops apprise notification. ################ " + str(e))
-    try:
-        logging.debug("Trying ##########" + cmd3)
-        os.system(cmd3)
-        # subprocess.call(cmd)
-    except Exception as e:  # noqa: E722
-        logging.error("Failed sending desktops apprise notification. ################ " + str(e))
     # boxcar
     # boxcar://{access_key}/{secret_key}
     if cfg['BOXCAR_KEY'] != "":
@@ -791,8 +728,6 @@ def parse_udev_cmdline(args):
     if args.label:
         (k, v) = args.label.split('=', 1)
         udev[k] = v
-    # if args.musicbrainz:
-    #    (k, v) = args.musicbrainz.split('=', 1)
     return parse_udev(udev)
 
 
@@ -802,31 +737,30 @@ def parse_udev(udev_dict):
     label = udev_dict.get("ID_FS_LABEL", None)
     logging.debug("udev_dict = " + str(udev_dict))
     if label is None:
-        label == "unknown"
+        label = "unknown"
     elif label == "iso9660":
         disctype = "data"
-    # We always want this to run but i dont wanna fix indents
-    if True:
+
+    try:
+        udev_dict['ID_CDROM_MEDIA_DVD']
+        disctype = "dvd"
+        print("disc is dvd")
+    except Exception as e:
+        print("dvd - e - " + str(e))
         try:
-            udev_dict['ID_CDROM_MEDIA_DVD']
-            disctype = "dvd"
-            print("disc is dvd")
+            udev_dict['ID_CDROM_MEDIA_BD']
+            disctype = "bluray"
+            print("disc is bluray")
         except Exception as e:
-            print("dvd - e - " + str(e))
+            print("bluray - e - " + str(e))
             try:
-                udev_dict['ID_CDROM_MEDIA_BD']
-                disctype = "bluray"
-                print("disc is bluray")
+                udev_dict['ID_CDROM_MEDIA_TRACK_COUNT_AUDIO']
+                disctype = "music"
+                print("disc is music")
             except Exception as e:
-                print("bluray - e - " + str(e))
-                try:
-                    udev_dict['ID_CDROM_MEDIA_TRACK_COUNT_AUDIO']
-                    disctype = "music"
-                    print("disc is music")
-                except Exception as e:
-                    print("Music cd - e - " + str(e))
-                    disctype = "unknown"
-                    print("disc is unknown")
+                print("Music cd - e - " + str(e))
+                disctype = "unknown"
+                print("disc is unknown")
         # check for known disctypes
         # This wont pick up music discs
         # for key in map_udev_disctype.keys():
@@ -901,60 +835,49 @@ def move_files(basepath, filename, job, ismainfeature=False):
     filename = name of file to be moved\n
     job = instance of Job class\n
     ismainfeature = True/False"""
-    # TODO update this to use prettytables
-    logging.debug("Moving files: " + str(job))
+    # logging.debug("Moving files: " + str(job.pretty_table()))
 
-    if job.title_manual:
-        # logging.info("Found new title: " + job.new_title + " (" + str(job.new_year) + ")")
-        # videotitle = job.new_title + " (" + str(job.new_year) + ")"
-        hasnicetitle = True
+    if job.video_type == "movie":
+        type_sub_folder = "movies"
+    elif job.video_type == "series":
+        type_sub_folder = "tv"
     else:
-        hasnicetitle = job.hasnicetitle
+        type_sub_folder = "unidentified"
 
-    videotitle = job.title + " (" + str(job.year) + ")"
+    hasnicetitle = True if job.title_manual else job.hasnicetitle
+    videotitle = f"{job.title} ({job.year})" if job.year and job.year != "0000" and job.year != "" else f"{job.title}"
 
-    logging.debug(
-        "Arguments: " + basepath + " : " + filename + " : " + str(hasnicetitle) + " : " + videotitle + " : " + str(
-            ismainfeature))
+    logging.debug(f"Arguments: {basepath} : {filename} : {hasnicetitle} : {videotitle} : {ismainfeature}")
+    m_path = os.path.join(cfg["MEDIA_DIR"], str(type_sub_folder), videotitle)
+    if not os.path.exists(m_path):
+        logging.info(f"Creating base title directory: {m_path}")
+        os.makedirs(m_path)
 
-    if hasnicetitle:
-        m_path = os.path.join(job.config.MEDIA_DIR + videotitle)
-
-        if not os.path.exists(m_path):
-            logging.info("Creating base title directory: " + m_path)
-            os.makedirs(m_path)
-
-        if ismainfeature is True:
-            logging.info("Track is the Main Title.  Moving '" + filename + "' to " + m_path)
-
-            m_file = os.path.join(m_path, videotitle + "." + job.config.DEST_EXT)
-            if not os.path.isfile(m_file):
-                try:
-                    shutil.move(os.path.join(basepath, filename), m_file)
-                except shutil.Error:
-                    logging.error("Unable to move '" + filename + "' to " + m_path)
-            else:
-                logging.info("File: " + m_file + " already exists.  Not moving.")
+    if ismainfeature is True:
+        logging.info(f"Track is the Main Title.  Moving '{filename}' to {m_path}")
+        m_file = os.path.join(m_path, videotitle + "." + cfg["DEST_EXT"])
+        if not os.path.isfile(m_file):
+            try:
+                shutil.move(os.path.join(basepath, filename), m_file)
+            except Exception as e:
+                logging.error(f"Unable to move '{filename}' to '{m_path}' - Error: {e}")
         else:
-            e_path = os.path.join(m_path, job.config.EXTRAS_SUB)
-
-            if not os.path.exists(e_path):
-                logging.info("Creating extras directory " + e_path)
-                os.makedirs(e_path)
-
-            logging.info("Moving '" + filename + "' to " + e_path)
-
-            e_file = os.path.join(e_path, videotitle + "." + job.config.DEST_EXT)
-            if not os.path.isfile(e_file):
-                try:
-                    shutil.move(os.path.join(basepath, filename), os.path.join(e_path, filename))
-                except shutil.Error:
-                    logging.error("Unable to move '" + filename + "' to " + e_path)
-            else:
-                logging.info("File: " + e_file + " already exists.  Not moving.")
-
+            logging.info(f"File: {m_file} already exists.  Not moving.")
     else:
-        logging.info("hasnicetitle is false.  Not moving files.")
+        e_path = os.path.join(m_path, cfg["EXTRAS_SUB"])
+        if not os.path.exists(e_path):
+            logging.info(f"Creating extras directory {e_path}")
+            os.makedirs(e_path)
+
+        logging.info(f"Moving '{filename}' to {e_path}")
+        e_file = os.path.join(e_path, videotitle + "." + cfg["DEST_EXT"])
+        if not os.path.isfile(e_file):
+            try:
+                shutil.move(os.path.join(basepath, filename), os.path.join(e_path, filename))
+            except shutil.Error:
+                logging.error(f"Unable to move '{filename}' to {e_path}")
+        else:
+            logging.info(f"File: {e_file} already exists.  Not moving.")
 
 
 def rename_files(oldpath, job):
@@ -1150,23 +1073,33 @@ def rip_data(job, datapath, logfile):
 
 
 def set_permissions(job, directory_to_traverse):
+    if not cfg['SET_MEDIA_PERMISSIONS']:
+        return False
     try:
-        corrected_chmod_value = int(str(job.config.CHMOD_VALUE), 8)
-        logging.info("Setting permissions to: " + str(job.config.CHMOD_VALUE) + " on: " + directory_to_traverse)
+        corrected_chmod_value = int(str(cfg["CHMOD_VALUE"]), 8)
+        logging.info("Setting permissions to: " + str(cfg["CHMOD_VALUE"]) + " on: " + directory_to_traverse)
         os.chmod(directory_to_traverse, corrected_chmod_value)
+        if job.config.SET_MEDIA_OWNER and job.config.CHOWN_USER and job.config.CHOWN_GROUP:
+            import pwd
+            import grp
+            uid = pwd.getpwnam(job.config.CHOWN_USER).pw_uid
+            gid = grp.getgrnam(job.config.CHOWN_GROUP).gr_gid
+            os.chown(directory_to_traverse, uid, gid)
 
         for dirpath, l_directories, l_files in os.walk(directory_to_traverse):
             for cur_dir in l_directories:
-                logging.debug("Setting path: " + cur_dir + " to permissions value: " + str(job.config.CHMOD_VALUE))
+                logging.debug("Setting path: " + cur_dir + " to permissions value: " + str(cfg["CHMOD_VALUE"]))
                 os.chmod(os.path.join(dirpath, cur_dir), corrected_chmod_value)
+                if job.config.SET_MEDIA_OWNER:
+                    os.chown(os.path.join(dirpath, cur_dir), uid, gid)
             for cur_file in l_files:
-                logging.debug("Setting file: " + cur_file + " to permissions value: " + str(job.config.CHMOD_VALUE))
+                logging.debug("Setting file: " + cur_file + " to permissions value: " + str(cfg["CHMOD_VALUE"]))
                 os.chmod(os.path.join(dirpath, cur_file), corrected_chmod_value)
-        return True
+                if job.config.SET_MEDIA_OWNER:
+                    os.chown(os.path.join(dirpath, cur_file), uid, gid)
+        logging.info("Permissions set successfully: True")
     except Exception as e:
-        err = "Permissions setting failed as: " + str(e)
-        logging.error(err)
-        return False
+        logging.error(f"Permissions setting failed as: {e}")
 
 
 def check_db_version(install_path, db_file):
@@ -1292,190 +1225,35 @@ def arm_setup():
         if not os.path.exists(cfg['LOGPATH']):
             os.makedirs(cfg['LOGPATH'])
     except IOError as e:  # noqa: F841
-        # logging.error("A fatal error has occurred.  Cant find/create the folders from arm.yaml " + str(e))
-        # notify(job, "ARM notification", "ARM encountered a fatal error processing " + str(job.title) + ". Check the
-        # logs for more details. " + str(e))
         sys.exit(e)
-
-
-def makecleanlogfile(logfile):
-    """
-    Clean the log of secret keys and return the removed string
-
-    arguments:
-    logfile - the log as string
-
-    returns - a clean string with all keys and api secrets removed
-    """
-    # TODO: make this cleaner/smaller
-    # lets make sure we are using a string
-    logfile = str(logfile)
-    # logging.debug("inside makecleanlogfile: " + str(logfile) + "\n\r")
-    out = re.sub("\(PB_KEY=.*?\)", '(PB_KEY=** REMOVED **)', logfile)  # noqa W605
-    out = re.sub("\(EMBY_PASSWORD=.*?\)", '(EMBY_PASSWORD=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(EMBY_API_KEY=.*?\)", '(EMBY_API_KEY=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(EMBY_SERVER=.*?\)", '(EMBY_SERVER=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(IFTTT_KEY=.*?\)", '(IFTTT_KEY=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(OMDB_API_KEY=.*?\)", '(OMDB_API_KEY=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(PO_APP_KEY=.*?\)", '(PO_APP_KEY=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(PO_USER_KEY=.*?\)", '(PO_USER_KEY=** REMOVED **)', out)  # noqa W605
-    # \(WEBSERVER_IP=(.*?)\.3[0-9]{1,3}\.[0-9]{1,3}\)
-    ips = re.search('\(WEBSERVER_IP=(.*?)\.[0-9]{1,3}\.[0-9]{1,3}\)', out)  # noqa W605
-    if ips:
-        ip = ips.group(1)
-        out = re.sub("\(WEBSERVER_IP=.*?\)", '(WEBSERVER_IP=' + str(ip) + '.xx.xx)', out)  # noqa W605
-
-    # Apprise notifications
-    out = re.sub("\(DISCORD_WEBHOOK_ID=.*?\)", '(DISCORD_WEBHOOK_ID=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(DISCORD_TOKEN=.*?\)", '(DISCORD_TOKEN=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(FAAST_TOKEN=.*?\)", '(FAAST_TOKEN=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(FLOCK_TOKEN=.*?\)", '(FLOCK_TOKEN=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(GITTER_TOKEN=.*?\)", '(GITTER_TOKEN=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(GOTIFY_HOST=.*?\)", '(GOTIFY_HOST=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(GROWL_HOST=.*?\)", '(GROWL_HOST=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(GROWL_PASS=.*?\)", '(GROWL_PASS=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(JOIN_API=.*?\)", '(JOIN_API=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(JOIN_DEVICE=.*?\)", '(JOIN_DEVICE=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(KODI_HOST=.*?\)", '(KODI_HOST=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(KODI_PASS=.*?\)", '(KODI_PASS=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(KUMULOS_API=.*?\)", '(KUMULOS_API=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(LAMETRIC_API=.*?\)", '(LAMETRIC_API=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(LAMETRIC_HOST=.*?\)", '(LAMETRIC_HOST=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(LAMETRIC_APP_ID=.*?\)", '(LAMETRIC_APP_ID=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(LAMETRIC_TOKEN=.*?\)", '(LAMETRIC_TOKEN=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(MAILGUN_DOMAIN=.*?\)", '(MAILGUN_DOMAIN=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(MAILGUN_APIKEY=.*?\)", '(MAILGUN_APIKEY=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(MATRIX_HOST=.*?\)", '(MATRIX_HOST=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(MATRIX_PASS=.*?\)", '(MATRIX_PASS=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(MATRIX_TOKEN=.*?\)", '(MATRIX_TOKEN=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(MSTEAMS_TOKENA=.*?\)", '(MSTEAMS_TOKENA=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(MSTEAMS_TOKENB=.*?\)", '(MSTEAMS_TOKENB=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(MSTEAMS_TOKENC=.*?\)", '(MSTEAMS_TOKENC=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(NEXTCLOUD_HOST=.*?\)", '(NEXTCLOUD_HOST=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(NEXTCLOUD_ADMINPASS=.*?\)", '(NEXTCLOUD_ADMINPASS=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(NOTICA_TOKEN=.*?\)", '(NOTICA_TOKEN=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(NOTIFICO_PROJECTID=.*?\)", '(NOTIFICO_PROJECTID=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(NOTIFICO_MESSAGEHOOK=.*?\)", '(NOTIFICO_MESSAGEHOOK=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(OFFICE365_TENANTID=.*?\)", '(OFFICE365_TENANTID=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(OFFICE365_CLIENT_ID=.*?\)", '(OFFICE365_CLIENT_ID=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(OFFICE365_CLIENT_SECRET=.*?\)", '(OFFICE365_CLIENT_SECRET=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(POPCORN_API=.*?\)", '(POPCORN_API=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(POPCORN_EMAIL=.*?\)", '(POPCORN_EMAIL=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(POPCORN_PHONENO=.*?\)", '(POPCORN_PHONENO=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(PROWL_API=.*?\)", '(PROWL_API=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(PROWL_PROVIDERKEY=.*?\)", '(PROWL_PROVIDERKEY=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(PUSH_API=.*?\)", '(PUSH_API=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(PUSHED_APP_KEY=.*?\)", '(PUSHED_APP_KEY=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(PUSHED_APP_SECRET=.*?\)", '(PUSHED_APP_SECRET=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(PUSHSAFER_KEY=.*?\)", '(PUSHSAFER_KEY=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(ROCKETCHAT_HOST=.*?\)", '(ROCKETCHAT_HOST=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(ROCKETCHAT_PASS=.*?\)", '(ROCKETCHAT_PASS=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(ROCKETCHAT_WEBHOOK=.*?\)", '(ROCKETCHAT_WEBHOOK=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(RYVER_ORG=.*?\)", '(RYVER_ORG=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(RYVER_TOKEN=.*?\)", '(RYVER_TOKEN=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(SENDGRID_API=.*?\)", '(SENDGRID_API=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(SENDGRID_FROMMAIL=.*?\)", '(SENDGRID_FROMMAIL=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(SIMPLEPUSH_API=.*?\)", '(SIMPLEPUSH_API=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(SLACK_TOKENA=.*?\)", '(SLACK_TOKENA=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(SLACK_TOKENB=.*?\)", '(SLACK_TOKENB=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(SLACK_TOKENC=.*?\)", '(SLACK_TOKENC=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(SPARKPOST_API=.*?\)", '(SPARKPOST_API=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(SPARKPOST_HOST=.*?\)", '(SPARKPOST_HOST=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(SPONTIT_API=.*?\)", '(SPONTIT_API=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(SPONTIT_USER_ID=.*?\)", '(SPONTIT_USER_ID=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(TELEGRAM_BOT_TOKEN=.*?\)", '(TELEGRAM_BOT_TOKEN=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(TELEGRAM_CHAT_ID=.*?\)", '(TELEGRAM_CHAT_ID=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(TWIST_EMAIL=.*?\)", '(TWIST_EMAIL=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(TWIST_PASS=.*?\)", '(TWIST_PASS=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(XBMC_HOST=.*?\)", '(XBMC_HOST=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(XBMC_PASS=.*?\)", '(XBMC_PASS=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(XMPP_HOST=.*?\)", '(XMPP_HOST=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(XMPP_PASS=.*?\)", '(XMPP_PASS=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(WEBEX_TEAMS_TOKEN=.*?\)", '(WEBEX_TEAMS_TOKEN=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(ZILUP_CHAT_TOKEN=.*?\)", '(ZILUP_CHAT_TOKEN=** REMOVED **)', out)  # noqa W605
-    out = re.sub("\(ZILUP_CHAT_ORG=.*?\)", '(ZILUP_CHAT_ORG=** REMOVED **)', out)  # noqa W605
-    # format for more entries
-    # out = re.sub("\(CONFIG_ID=.*?\)", '(CONFIG_ID=** REMOVED **)', out)
-
-    # logging.debug("our clean log string" + str(out))
-    return out
 
 
 def database_updater(args, job, wait_time=90):
     """
     Try to update our db for x seconds and handle it nicely if we cant
-
-    :param args:
-    :param job:
-    :param wait_time:
-    :return:
+    :param args: This needs to be a Dict with the key being the job.method you want to change and the value being
+    the new value.
+    :param job: This is the job object
+    :param wait_time: The time to wait in seconds
+    :return: Nothing
     """
     # Loop through our args and try to set any of our job variables
     for (key, value) in args.items():
+        setattr(job, key, value)
         logging.debug(str(key) + "= " + str(value))
-        logging.debug("key = " + str(key))
-        if key == "job_id":
-            job.job_id = value
-        elif key == "logfile":
-            job.logfile = value
-        elif key == "status":
-            job.status = value
-        elif key == "no_of_titles":
-            job.no_of_titles = value
-        elif key == "job_length":
-            job.job_length = value
-        elif key == "crc_id":
-            job.crc_id = value
-        elif key == "year":
-            job.year = value
-        elif key == "year_auto":
-            job.year_auto = value
-        elif key == "year_manual":
-            job.year_manual = value
-        elif key == "no_of_titles":
-            job.no_of_titles = value
-        elif key == "title":
-            job.title = value
-        elif key == "title_auto":
-            job.title_auto = value
-        elif key == "title_manual":
-            job.title_manual = value
-        elif key == "video_type":
-            job.video_type = value
-        elif key == "video_type_auto":
-            job.video_type_auto = value
-        elif key == "video_type_manual":
-            job.video_type_manual = value
-        elif key == "imdb_id":
-            job.imdb_id = value
-        elif key == "imdb_id_auto":
-            job.poster_url = value
-        elif key == "imdb_id_manual":
-            job.imdb_id_manual = value
-        elif key == "poster_url":
-            job.poster_url = value
-        elif key == "poster_url_auto":
-            job.poster_url_auto = value
-        elif key == "poster_url_manual":
-            job.poster_url_manual = value
-        elif key == "hasnicetitle":
-            job.hasnicetitle = value
-        elif key == "errors":
-            job.errors = value
-
     for i in range(wait_time):  # give up after the users wait period in seconds
         try:
             db.session.commit()
-            db.session.refresh(job)
-            logging.debug("successfully written to the database")
-            return True
         except Exception as e:
             if "locked" in str(e):
                 time.sleep(1)
-                logging.debug("database is locked - trying in 1 second")
+                logging.debug(f"database is locked - try {i}/{wait_time}")
             else:
                 logging.debug("Error: " + str(e))
                 raise RuntimeError(str(e))
+        else:
+            logging.debug("successfully written to the database")
+            return True
 
 
 def job_dupe_check(job):
@@ -1488,27 +1266,33 @@ def job_dupe_check(job):
              False if we didnt find any with the same crc
               - Will also return None as a secondary param
     """
-    if job.crc_id is None or job.crc_id == "None":
+    if job.crc_id is None:
         return False, None
-    # TODO possibly only grab hasnicetitles ?
-    jobs = Job.query.filter_by(crc_id=job.crc_id, status="success")
-    # logging.debug("search - posts=" + str(jobs))
+    logging.debug(f"trying to find jobs with crc64={job.crc_id}")
+    previous_rips = Job.query.filter_by(crc_id=job.crc_id, status="success", hasnicetitle=True)
     r = {}
     i = 0
-    for j in jobs:
+    for j in previous_rips:
         logging.debug("job obj= " + str(j.get_d()))
         x = j.get_d().items()
         r[i] = {}
         for key, value in iter(x):
             r[i][str(key)] = str(value)
-            # logging.debug(str(key) + "= " + str(value))
         i += 1
 
-    logging.debug(r)
-    logging.debug("r len=" + str(len(r)))
-    if jobs is not None and len(r) > 0:
-        logging.debug("jobs is none or len(r) - we have jobs")
+    logging.debug(f"previous rips = {r}")
+    if r:
+        logging.debug(f"we have {len(r)} jobs")
+        # This might need some tweaks to because of title/year manual
+        title = r[0]['title'] if r[0]['title'] else job.label
+        year = r[0]['year'] if r[0]['year'] != "" else ""
+        poster_url = r[0]['poster_url'] if r[0]['poster_url'] != "" else None
+        hasnicetitle = bool(r[0]['hasnicetitle']) if r[0]['hasnicetitle'] else False
+        video_type = r[0]['video_type'] if r[0]['hasnicetitle'] != "" else "unknown"
+        active_rip = {
+            "title": title, "year": year, "poster_url": poster_url, "hasnicetitle": hasnicetitle,
+            "video_type": video_type}
+        database_updater(active_rip, job)
         return True, r
-    else:
-        logging.debug("jobs is none or len(r) is 0 - we have no jobs")
-        return False, None
+    logging.debug("we have no previous rips/jobs matching this crc64")
+    return False, None

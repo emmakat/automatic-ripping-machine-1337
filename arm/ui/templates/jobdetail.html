@@ -33,19 +33,17 @@
         }
 
         div.rotten-tomatoes {
-            background: url("https://www.rottentomatoes.com/assets/pizza-pie/images/icons/tomatometer/tomatometer-fresh.149b5e8adc3.svg") no-repeat 0 0;
             padding-left: 23px;
             font-weight: bolder;
             background-size: 33% 100%;
-            background-position: left;
+            background: url("https://www.rottentomatoes.com/assets/pizza-pie/images/icons/tomatometer/tomatometer-fresh.149b5e8adc3.svg") no-repeat left;
         }
 
         div.rotten-tomatoes-rotten {
-            background: url("https://www.rottentomatoes.com/assets/pizza-pie/images/icons/tomatometer/tomatometer-rotten.f1ef4f02ce3.svg") no-repeat 0 0;
             padding-left: 23px;
             font-weight: bolder;
             background-size: 33% 100%;
-            background-position: left;
+            background: url("https://www.rottentomatoes.com/assets/pizza-pie/images/icons/tomatometer/tomatometer-rotten.f1ef4f02ce3.svg") no-repeat left;
 
         }
 
@@ -53,11 +51,6 @@
             margin-top: -50px !important;
         }
     </style>
-    <!--{{s}}
-<br>
-<br>
-{{jobs}}
--->
     <div class="container">
         <div class="row">
             <div class="col-sm-12">
@@ -70,6 +63,7 @@
                                 <!-- Proof that just because you CAN doesnt mean you should! -->
                                 {% for ratings in s['Ratings'] %}
                                     <div class="
+
                                             {{ ratings['Source']|replace(' ', '-')|lower }}{{ '-rotten' if ratings['Source'] == 'Rotten Tomatoes' and ratings['Value']|replace('%','')| int < 60 else '' }}">
                                         {{ ratings['Value'].split('/')[0] if '/' in ratings['Value'] else ratings['Value'] }}
                                     </div>
@@ -115,7 +109,7 @@
                         </div>
                         <div class="card-body">
                             <table id="jobtable" class="table table-striped">
-                            <caption>Job details</caption>
+                                <caption>Job details</caption>
                                 <thead class="bg-secondary">
                                 <tr>
                                     <th scope="col" style="text-align:left">Field</th>
@@ -239,7 +233,7 @@
                                         <td style="text-align:left"><strong>poster_url</strong></td>
                                         <td style="text-align:left"><a href="{{ jobs.poster_url }}"><img
                                                 src="{{ jobs.poster_url }}" title="{{ jobs.poster_url }}"
-                                                width="50"  alt="Poster Image"></a><br/>{{ jobs.poster_url }}
+                                                width="50" alt="Poster Image"></a><br/>{{ jobs.poster_url }}
                                         </td>
                                     </tr>
                                     <tr>
@@ -318,7 +312,7 @@
                                 </tbody>
                             </table>
                             <table id="tracktable" class="table table-striped">
-                            <caption>Tracks for this job</caption>
+                                <caption>Tracks for this job</caption>
                                 <thead class="bg-secondary">
                                 <tr>
                                     <th scope="col" style="text-align:left">Track #</th>
