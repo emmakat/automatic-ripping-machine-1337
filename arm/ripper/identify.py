@@ -12,13 +12,10 @@ import unicodedata
 import xmltodict
 import json
 
-from arm.ripper import utils
+from arm.ripper import utils as ripper_utils
+from arm.ui import utils as ui_utils
 from arm.ui import db
 from arm.config.config import cfg
-
-# flake8: noqa: W605
-# from arm.ui.utils import call_omdb_api, tmdb_search
-import arm.ui.utils
 
 
 def identify(job, logfile):
@@ -33,7 +30,7 @@ def identify(job, logfile):
     os.system("mount " + job.devpath)
 
     # Check with the job class to get the correct disc type
-    job.get_disc_type(utils.find_file("HVDVD_TS", job.mountpoint))
+    job.get_disc_type(ripper_utils.find_file("HVDVD_TS", job.mountpoint))
 
     if job.disctype in ["dvd", "bluray"]:
 
@@ -145,7 +142,7 @@ def identify_dvd(job):
                 'video_type': x['results']['0']['video_type'],
                 'video_type_auto': x['results']['0']['video_type'],
             }
-            utils.database_updater(args, job)
+            ripper_utils.database_updater(args, job)
             # return True
     except Exception as e:
         logging.error("Pydvdid failed with the error: " + str(e))
@@ -222,7 +219,7 @@ def update_job(job, s):
         'poster_url': s['Search'][0]['Poster'],
         'hasnicetitle': True
     }
-    utils.database_updater(args, job)
+    ripper_utils.database_updater(args, job)
 
 
 def metadata_selector(job, title=None, year=None):
@@ -241,13 +238,13 @@ def metadata_selector(job, title=None, year=None):
     """
     if cfg['METADATA_PROVIDER'].lower() == "tmdb":
         logging.debug("provider tmdb")
-        x = tmdb_search(title, year)
+        x = ui_utils.tmdb_search(title, year)
         if x is not None:
             update_job(job, x)
         return x
     elif cfg['METADATA_PROVIDER'].lower() == "omdb":
         logging.debug("provider omdb")
-        x = call_omdb_api(str(title), str(year))
+        x = ui_utils.call_omdb_api(str(title), str(year))
         if x is not None:
             update_job(job, x)
         return x

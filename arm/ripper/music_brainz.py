@@ -5,8 +5,9 @@ import musicbrainzngs as mb
 from discid import read, Disc
 
 from arm.config.config import cfg
-import arm.ripper.utils
 import werkzeug
+
+from arm.ripper.utils import database_updater
 
 werkzeug.cached_property = werkzeug.utils.cached_property
 from robobrowser import RoboBrowser  # noqa E402
@@ -145,10 +146,10 @@ def get_title(discid, job):
             'title_auto': str(artist + " " + title),
             'video_type': "Music"
         }
-        u.database_updater(args, job)
+        database_updater(args, job)
         return clean_title
     except mb.WebServiceError:
-        u.database_updater(False, job)
+        database_updater(False, job)
         return "not identified"
 
 
@@ -180,10 +181,10 @@ def get_cd_art(job, infos):
                         'poster_url': str(image["image"]),
                         'poster_url_auto': str(image["image"])
                     }
-                    u.database_updater(args, job)
+                    database_updater(args, job)
                     return True
     except mb.WebServiceError as exc:
-        u.database_updater(False, job)
+        database_updater(False, job)
         logging.error("get_cd_art ERROR: " + str(exc))
     try:
         # This uses roboBrowser to grab the amazon/3rd party image if it exists
@@ -197,14 +198,14 @@ def get_cd_art(job, infos):
             'poster_url_auto': str(re.search(r'<img src="(.*)"', str(img)).group(1)),
             'video_type': "Music"
         }
-        u.database_updater(args, job)
+        database_updater(args, job)
         if job.poster_url != "":
             return True
         else:
             return False
     except mb.WebServiceError as exc:
         logging.error("get_cd_art ERROR: " + str(exc))
-        u.database_updater(False, job)
+        database_updater(False, job)
         return False
 
 

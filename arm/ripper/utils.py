@@ -16,7 +16,6 @@ import psutil
 
 from arm.config.config import cfg
 from arm.ui import app, db
-import arm.models.models
 
 NOTIFY_TITLE = "ARM notification"
 
@@ -418,7 +417,7 @@ def put_track(job, t_no, seconds, aspect, fps, mainfeature, source, filename="")
     source = Source of information\n
     filename = filename of track\n
     """
-
+    from arm.models.models import Track
     logging.debug(
         f"Track #{t_no} Length: {seconds} fps: {fps} aspect: {aspect} Mainfeature: {mainfeature} Source:  {source}")
 
@@ -518,6 +517,7 @@ def database_adder(obj_class):
 
 
 def clean_old_jobs():
+    from arm.models.models import Job
     a_jobs = db.session.query(Job).filter(Job.status.notin_(['fail', 'success'])).all()
     # Clean up abandoned jobs
     for j in a_jobs:
@@ -543,6 +543,7 @@ def job_dupe_check(job):
              False if we didnt find any with the same crc
               - Will also return None as a secondary param
     """
+    from arm.models.models import Job
     if job.crc_id is None:
         return False, None
     logging.debug(f"trying to find jobs with crc64={job.crc_id}")
