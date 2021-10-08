@@ -18,7 +18,7 @@ from arm.config.config import cfg
 
 # flake8: noqa: W605
 # from arm.ui.utils import call_omdb_api, tmdb_search
-import arm.ui.utils as u
+import arm.ui.utils
 
 
 def identify(job, logfile):
@@ -241,13 +241,13 @@ def metadata_selector(job, title=None, year=None):
     """
     if cfg['METADATA_PROVIDER'].lower() == "tmdb":
         logging.debug("provider tmdb")
-        x = u.tmdb_search(title, year)
+        x = tmdb_search(title, year)
         if x is not None:
             update_job(job, x)
         return x
     elif cfg['METADATA_PROVIDER'].lower() == "omdb":
         logging.debug("provider omdb")
-        x = u.call_omdb_api(str(title), str(year))
+        x = call_omdb_api(str(title), str(year))
         if x is not None:
             update_job(job, x)
         return x

@@ -5,7 +5,7 @@ import musicbrainzngs as mb
 from discid import read, Disc
 
 from arm.config.config import cfg
-import arm.ripper.utils as u
+import arm.ripper.utils
 import werkzeug
 
 werkzeug.cached_property = werkzeug.utils.cached_property
@@ -73,11 +73,11 @@ def music_brainz(discid, job):
             'title': title,
             'title_auto': title
         }
-        u.database_updater(args, job)
+        database_updater(args, job)
         logging.debug("musicbrain works -  New title is " + title + ".  New Year is: " + new_year)
     except mb.WebServiceError as exc:
         logging.error("Cant reach MB or cd not found ? - ERROR: " + str(exc))
-        u.database_updater(False, job)
+        database_updater(False, job)
         return ""
     try:
         # We never make it to here if the mb fails
@@ -99,11 +99,10 @@ def music_brainz(discid, job):
             'title_auto': artist_title,
             'no_of_titles': infos['disc']['offset-count']
         }
-        u.database_updater(args, job)
+        database_updater(args, job)
     except Exception as exc:
         artist_title = "Not identified" if not title else title
         logging.error("Try 2 -  ERROR: " + str(exc))
-        u.database_updater(False, job)
     return artist_title
 
 
