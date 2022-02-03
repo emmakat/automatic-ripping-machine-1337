@@ -35,6 +35,9 @@ RUN \
     udev \
     wget \
     build-essential \
+    nano \
+    vi \
+    vim \
     && \
   DEBIAN_FRONTEND=noninteractive apt clean -y && \
   rm -rf /var/lib/apt/lists/* 
