@@ -26,7 +26,7 @@ COPY ./scripts/add-ppa.sh /root/add-ppa.sh
 # setup Python virtualenv and gnupg/wget for add-ppa.sh
 RUN \
   apt update -y && \
-  DEBIAN_FRONTEND=noninteractive apt upgrade -y && apt-get install -y apt-transport-https \
+  DEBIAN_FRONTEND=noninteractive apt upgrade -y && \
   DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends \
     gnupg \
     gosu \
@@ -200,10 +200,10 @@ CMD ["python3", "/opt/arm/arm/runui.py"]
 
 
 # pass build args for labeling
-ARG image_revision=2.5.3
-ARG image_created="2021-04-29"
+ARG image_revision=2.5.9
+ARG image_created="2022-03-16"
 
 LABEL org.opencontainers.image.source=https://github.com/1337-server/automatic-ripping-machine
-LABEL org.opencontainers.image.revision="2.5.3"
-LABEL org.opencontainers.image.created="2021-04-29"
+LABEL org.opencontainers.image.revision="2.5.9"
+LABEL org.opencontainers.image.created="2022-03-16"
 LABEL org.opencontainers.image.license=MIT
