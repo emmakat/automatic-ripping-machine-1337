@@ -28,4 +28,4 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: 1337-server/automatic-ripping-machine:latest
+          tags: 1337server/automatic-ripping-machine:latest
