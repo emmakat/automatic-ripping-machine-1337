@@ -26,7 +26,7 @@ COPY ./scripts/add-ppa.sh /root/add-ppa.sh
 # setup Python virtualenv and gnupg/wget for add-ppa.sh
 RUN \
   apt update -y && \
-  DEBIAN_FRONTEND=noninteractive apt upgrade -y && \
+  DEBIAN_FRONTEND=noninteractive apt upgrade -y && apt-get install -y apt-transport-https \
   DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends \
     gnupg \
     gosu \
