@@ -36,7 +36,6 @@ RUN \
     wget \
     build-essential \
     nano \
-    vi \
     vim \
     && \
   DEBIAN_FRONTEND=noninteractive apt clean -y && \
