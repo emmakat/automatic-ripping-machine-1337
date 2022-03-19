@@ -392,7 +392,7 @@ def main(logfile, job):
             for raw_folder in raw_list:
                 try:
                     logging.info(f"Removing raw path - {raw_folder}")
-                    if raw_folder != final_directory:
+                    if raw_folder != final_directory and job.config.COMPLETED_PATH not in raw_folder:
                         shutil.rmtree(raw_folder)
                 except UnboundLocalError as e:
                     logging.debug(f"No raw files found to delete in {raw_folder}- {e}")
