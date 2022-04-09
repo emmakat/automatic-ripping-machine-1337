@@ -122,6 +122,18 @@ COPY --from=libdvd /usr/src/libdvd-pkg/libdvdcss2_*.deb /opt/arm
 # leaves apt in a broken state so do package install last
 RUN DEBIAN_FRONTEND=noninteractive dpkg -i --ignore-depends=libdvd-pkg /opt/arm/libdvdcss2_*.deb
 
+COPY ./docker/requirements/requirements.ripper.txt /requirements.ripper.txt
+COPY ./docker/requirements/requirements.ui.txt /requirements.ui.txt
+RUN    \
+  pip3 install \
+    --ignore-installed \
+    --prefer-binary \
+    -r /requirements.ui.txt \
+  && \
+  pip3 install \
+    --ignore-installed \
+    --prefer-binary \
+    -r /requirements.ripper.txt
 # default directories and configs
 RUN \
   mkdir -m 0777 -p /home/arm /home/arm/config /mnt/dev/sr0 /mnt/dev/sr1 /mnt/dev/sr2 /mnt/dev/sr3 /mnt/dev/sr4 && \
@@ -135,26 +147,17 @@ RUN \
 
 # copy ARM source last, helps with Docker build caching
 COPY . /opt/arm/
-COPY ./docker/requirements/requirements.ripper.txt /requirements.ripper.txt
-COPY ./docker/requirements/requirements.ui.txt /requirements.ui.txt
-RUN    \
-  pip3 install \
-    --ignore-installed \
-    --prefer-binary \
-    -r /requirements.ui.txt \
-  && \
-  pip3 install \
-    --ignore-installed \
-    --prefer-binary \
-    -r /requirements.ripper.txt
+
  # Disable SSH
 RUN rm -rf /etc/service/sshd /etc/my_init.d/00_regen_ssh_host_keys.sh
 
 RUN mkdir -p /etc/my_init.d
 COPY docker/start/start_aaudev.sh /etc/my_init.d/start_udev.sh
 COPY docker/start/start_armui.sh /etc/my_init.d/start_armui.sh
-COPY docker/start/start_ripper.sh /etc/my_init.d/start_ripper.sh
+#COPY docker/start/start_ripper.sh /etc/my_init.d/start_ripper.sh
+COPY docker/start/start_aaudev.sh /etc/my_init.d/start_aaudev.sh
 COPY docker/start/docker-entrypoint.sh /etc/my_init.d/docker-entrypoint.sh
+COPY docker/udev /etc/init.d/udev
 
 RUN chmod +x /etc/my_init.d/*.sh
 RUN chmod +x /opt/arm/arm/ripper/main.py
