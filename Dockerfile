@@ -122,6 +122,7 @@ COPY --from=libdvd /usr/src/libdvd-pkg/libdvdcss2_*.deb /opt/arm
 # leaves apt in a broken state so do package install last
 RUN DEBIAN_FRONTEND=noninteractive dpkg -i --ignore-depends=libdvd-pkg /opt/arm/libdvdcss2_*.deb
 
+# Copy both sets of requirements.txt and install them
 COPY ./docker/requirements/requirements.ripper.txt /requirements.ripper.txt
 COPY ./docker/requirements/requirements.ui.txt /requirements.ui.txt
 RUN    \
@@ -134,7 +135,7 @@ RUN    \
     --ignore-installed \
     --prefer-binary \
     -r /requirements.ripper.txt
-# default directories and configs
+# Default directories and configs
 RUN \
   mkdir -m 0777 -p /home/arm /home/arm/config /mnt/dev/sr0 /mnt/dev/sr1 /mnt/dev/sr2 /mnt/dev/sr3 /mnt/dev/sr4 && \
   ln -sv /home/arm/config/arm.yaml /opt/arm/arm.yaml && \
@@ -148,21 +149,25 @@ RUN \
 # copy ARM source last, helps with Docker build caching
 COPY . /opt/arm/
 
- # Disable SSH
+# Disable SSH
 RUN rm -rf /etc/service/sshd /etc/my_init.d/00_regen_ssh_host_keys.sh
 
+# Create our startup scripts
 RUN mkdir -p /etc/my_init.d
 COPY docker/start/start_aaudev.sh /etc/my_init.d/start_udev.sh
 COPY docker/start/start_armui.sh /etc/my_init.d/start_armui.sh
 #COPY docker/start/start_ripper.sh /etc/my_init.d/start_ripper.sh
 COPY docker/start/start_aaudev.sh /etc/my_init.d/start_aaudev.sh
 COPY docker/start/docker-entrypoint.sh /etc/my_init.d/docker-entrypoint.sh
-COPY docker/udev /etc/init.d/udev
 
+# We need to use a modified udev
+COPY docker/udev /etc/init.d/udev
+# Copy the docker version file
+COPY ./docker/VERSION /
 RUN chmod +x /etc/my_init.d/*.sh
 RUN chmod +x /opt/arm/arm/ripper/main.py
 
-# Create a user group 'xyzgroup'
+# Create a user group
 RUN addgroup arm
 RUN useradd -r -s /bin/bash -g root -G arm -u 1001 arm
 
@@ -176,15 +181,10 @@ VOLUME /home/arm/media
 VOLUME /home/arm/config
 WORKDIR /home/arm
 
-#ENTRYPOINT ["/opt/arm/scripts/docker-entrypoint.sh"]
-#CMD ["python3", "/opt/arm/arm/runui.py"]
+
 CMD ["/sbin/my_init"]
 
-# pass build args for labeling
-ARG image_revision=2.5.9
-ARG image_created="2022-03-16"
-
 LABEL org.opencontainers.image.source=https://github.com/1337-server/automatic-ripping-machine
-LABEL org.opencontainers.image.revision="2.5.9"
-LABEL org.opencontainers.image.created="2022-03-16"
+LABEL org.opencontainers.image.revision="2.6.5"
+LABEL org.opencontainers.image.created="2022-04-09"
 LABEL org.opencontainers.image.license=MIT
