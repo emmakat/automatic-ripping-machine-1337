@@ -44,9 +44,7 @@ function updateModal(modal) {
 
 $(document).ready(function () {
     pushChildServers();
-    refreshJobs();
     activeTab("home");
-
     $("#save-yes").bind('click', function () {
         console.log(hrrref);
         if (hrrref !== "") {
@@ -85,6 +83,7 @@ $(document).ready(function () {
         const modal = $(this);
         updateModal(modal);
     });
+    refreshJobs();
 });
 
 function addJobItem(job) {
