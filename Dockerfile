@@ -3,9 +3,9 @@
 #FROM ubuntu:20.04 as base
 FROM phusion/baseimage:focal-1.2.0 as base
 # override at runtime to match user that ARM runs as local user
-ENV RUN_AS_USER=true
-ENV UID=1001
-ENV GID=1001
+ENV RUN_AS_USER=false
+ENV UID=1000
+ENV GID=1000
 # override at runtime to change makemkv key
 ENV MAKEMKV_APP_KEY=""
 
@@ -136,7 +136,6 @@ RUN    \
     --prefer-binary \
     -r /requirements.ripper.txt
 
-
 # Default directories and configs
 COPY ./docs/arm.yaml.sample /opt/arm/arm.yaml
 COPY ./docs/apprise.yaml /opt/arm/apprise.yaml
@@ -151,6 +150,10 @@ RUN \
 
 # copy ARM source last, helps with Docker build caching
 COPY . /opt/arm/
+# Create a user group
+RUN addgroup arm
+RUN useradd -r -s /bin/bash -g root -G arm -u 1001 arm
+RUN chown -R arm:arm /opt/arm
 # These shouldnt be needed as docker-entrypoint.sh should do it
 RUN \
   ln -sf /home/arm/config/arm.yaml /opt/arm/arm.yaml && \
@@ -165,7 +168,6 @@ RUN mkdir -p /etc/my_init.d
 COPY docker/start/start_aaudev.sh /etc/my_init.d/start_udev.sh
 COPY docker/start/start_armui.sh /etc/my_init.d/start_armui.sh
 #COPY docker/start/start_ripper.sh /etc/my_init.d/start_ripper.sh
-COPY docker/start/start_aaudev.sh /etc/my_init.d/start_aaudev.sh
 COPY docker/start/docker-entrypoint.sh /etc/my_init.d/docker-entrypoint.sh
 
 # We need to use a modified udev
@@ -173,12 +175,7 @@ COPY docker/udev /etc/init.d/udev
 # Copy the docker version file
 COPY ./docker/VERSION /opt/arm/
 RUN chmod +x /etc/my_init.d/*.sh
-RUN chmod +x /opt/arm/arm/ripper/main.py
 
-# Create a user group
-RUN addgroup arm
-RUN useradd -r -s /bin/bash -g root -G arm -u 1001 arm
-RUN chown -R arm:arm /opt/arm
 # Our docker udev rule
 RUN ln -sv /opt/arm/setup/51-automedia-docker.rules /lib/udev/rules.d/
 
@@ -194,6 +191,6 @@ WORKDIR /home/arm
 CMD ["/sbin/my_init"]
 
 LABEL org.opencontainers.image.source=https://github.com/1337-server/automatic-ripping-machine
-LABEL org.opencontainers.image.revision="2.6.5"
-LABEL org.opencontainers.image.created="2022-04-09"
+LABEL org.opencontainers.image.revision="2.6.1"
+LABEL org.opencontainers.image.created="2022-04-10"
 LABEL org.opencontainers.image.license=MIT

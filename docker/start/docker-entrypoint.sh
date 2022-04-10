@@ -17,6 +17,17 @@ for dir in $SUBDIRS ; do
     chown -R "${USER}.${USER}" "${thisDir}"
   fi
 done
+# setup needed/expected mnt paths if not found
+SUBDIRS="sr0 sr1 sr2 sr3 sr4"
+for dir in $SUBDIRS ; do
+  thisDir="/mnt/dev/${dir}"
+  if [[ ! -d "${thisDir}" ]] ; then
+    echo "creating dir ${thisDir}"
+    mkdir -p -m 0777 "${thisDir}"
+    chown -R "${USER}.${USER}" "${thisDir}"
+  fi
+done
+
 if [[ ! -f "${HOME}/config/arm.yaml" ]] ; then
   echo "Creating example ARM config ${HOME}/config/arm.yaml"
   cp /opt/arm/docs/arm.yaml.sample "${HOME}/config/arm.yaml"
@@ -38,7 +49,14 @@ if ! [[ -z "${MAKEMKV_APP_KEY}" ]] ; then
   echo "app_Key = \"${MAKEMKV_APP_KEY}\"" > "${HOME}/.MakeMKV/settings.conf"
 fi
 
-[[ -h /dev/cdrom ]] || ln -sv /dev/sr0 /dev/cdrom 
+[[ -h /dev/cdrom ]] || ln -sv /dev/sr0 /dev/cdrom
+
+chown -R arm:arm /home/arm && \
+chown -R arm:arm /dev/sr0 && \
+chown -R arm:arm /dev/sr1 && \
+chown -R arm:arm /dev/sr2 && \
+chown -R arm:arm /dev/sr3 && \
+chown -R arm:arm /dev/sr4
 
 if [[ "${RUN_AS_USER:-true}" == "true" ]] ; then
   exec /usr/sbin/gosu arm "$@"

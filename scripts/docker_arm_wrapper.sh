@@ -61,4 +61,4 @@ else
 
 fi
 
-/bin/su -l -c "/usr/bin/python3 /opt/arm/arm/ripper/main.py -d ${DEVNAME}"
+/bin/su -l arm -c "/usr/bin/python3 /opt/arm/arm/ripper/main.py -d ${DEVNAME}" | logger -t ARM -s
