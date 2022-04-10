@@ -342,7 +342,8 @@ def rip_data(job):
     make_dir(final_path)
     logging.info(f"Ripping data disc to: {incomplete_filename}")
     # Added from pull 366
-    cmd = f'dd if="{job.devpath}" of="{incomplete_filename}" {cfg["DATA_RIP_PARAMETERS"]} 2>> {job.logfile}'
+    logfile = os.path.join(cfg["LOGPATH"], job.logfile)
+    cmd = f'dd if="{job.devpath}" of="{incomplete_filename}" {cfg["DATA_RIP_PARAMETERS"]} 2>> {logfile}'
     logging.debug(f"Sending command: {cmd}")
     try:
         subprocess.check_output(cmd, shell=True).decode("utf-8")

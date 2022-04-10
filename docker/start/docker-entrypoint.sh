@@ -51,12 +51,13 @@ fi
 
 [[ -h /dev/cdrom ]] || ln -sv /dev/sr0 /dev/cdrom
 
-chown -R arm:arm /home/arm && \
-chown -R arm:arm /dev/sr0 && \
-chown -R arm:arm /dev/sr1 && \
-chown -R arm:arm /dev/sr2 && \
-chown -R arm:arm /dev/sr3 && \
-chown -R arm:arm /dev/sr4
+chown -R "${USER}.${USER}"  /home/arm && \
+chown -R "${USER}.${USER}"  /dev/sr0 && \
+chown -R "${USER}.${USER}"  /dev/sr1 && \
+chown -R "${USER}.${USER}"  /dev/sr2 && \
+chown -R "${USER}.${USER}"  /dev/sr3 && \
+chown -R "${USER}.${USER}"  /dev/sr4 && \
+chmod -R 0777 /home/arm
 
 if [[ "${RUN_AS_USER:-true}" == "true" ]] ; then
   exec /usr/sbin/gosu arm "$@"
