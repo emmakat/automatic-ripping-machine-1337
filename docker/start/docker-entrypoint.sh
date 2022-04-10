@@ -8,7 +8,7 @@ export USER=arm
 export HOME="/home/${USER}"
 
 # setup needed/expected dirs if not found
-SUBDIRS="config media media/completed media/raw media/movies logs db Music .MakeMKV"
+SUBDIRS="config media media/completed media/raw media/movies logs db music .MakeMKV"
 for dir in $SUBDIRS ; do
   thisDir="${HOME}/${dir}"
   if [[ ! -d "${thisDir}" ]] ; then
@@ -18,19 +18,19 @@ for dir in $SUBDIRS ; do
   fi
 done
 if [[ ! -f "${HOME}/config/arm.yaml" ]] ; then
-  echo "creating example ARM config ${HOME}/config/arm.yaml"
+  echo "Creating example ARM config ${HOME}/config/arm.yaml"
   cp /opt/arm/docs/arm.yaml.sample "${HOME}/config/arm.yaml"
   chown "${USER}.${USER}" "${HOME}/config/arm.yaml"
 fi
 if [[ ! -f "${HOME}/config/apprise.yaml" ]] ; then
-  echo "creating example apprise config ${HOME}/config/apprise.yaml"
+  echo "Creating example apprise config ${HOME}/config/apprise.yaml"
   cp /opt/arm/docs/apprise.yaml "${HOME}/config/apprise.yaml"
   chown "${USER}.${USER}" "${HOME}/config/apprise.yaml"
 fi
 if [[ ! -f "${HOME}/.abcde.conf" ]] ; then
-  echo "creating example abcde config ${HOME}/.abcde.conf"
-  cp /opt/arm/setup/.abcde.conf "${HOME}/.abcde.conf"
-  ln -sv "${HOME}/.abcde.conf" "${HOME}/config/.abcde.conf"
+  echo "Creating example abcde config ${HOME}/config/.abcde.conf"
+  ln -fs /opt/arm/setup/.abcde.conf "${HOME}/.abcde.conf"
+  ln -fs "${HOME}/.abcde.conf" "${HOME}/config"
   chown "${USER}.${USER}" "${HOME}/.abcde.conf"
 fi
 echo "setting makemkv app-Key"

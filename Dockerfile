@@ -4,8 +4,8 @@
 FROM phusion/baseimage:focal-1.2.0 as base
 # override at runtime to match user that ARM runs as local user
 ENV RUN_AS_USER=true
-ENV UID=1000
-ENV GID=1000
+ENV UID=1001
+ENV GID=1001
 # override at runtime to change makemkv key
 ENV MAKEMKV_APP_KEY=""
 
@@ -135,20 +135,28 @@ RUN    \
     --ignore-installed \
     --prefer-binary \
     -r /requirements.ripper.txt
+
+
 # Default directories and configs
+COPY ./docs/arm.yaml.sample /opt/arm/arm.yaml
+COPY ./docs/apprise.yaml /opt/arm/apprise.yaml
 RUN \
   mkdir -m 0777 -p /home/arm /home/arm/config /mnt/dev/sr0 /mnt/dev/sr1 /mnt/dev/sr2 /mnt/dev/sr3 /mnt/dev/sr4 && \
-  ln -sv /home/arm/config/arm.yaml /opt/arm/arm.yaml && \
-  ln -sv /opt/arm/apprise.yaml /home/arm/config/apprise.yaml && \
   echo "/dev/sr0  /mnt/dev/sr0  udf,iso9660  users,noauto,exec,utf8,ro  0  0" >> /etc/fstab  && \
   echo "/dev/sr1  /mnt/dev/sr1  udf,iso9660  users,noauto,exec,utf8,ro  0  0" >> /etc/fstab  && \
   echo "/dev/sr2  /mnt/dev/sr2  udf,iso9660  users,noauto,exec,utf8,ro  0  0" >> /etc/fstab  && \
   echo "/dev/sr3  /mnt/dev/sr3  udf,iso9660  users,noauto,exec,utf8,ro  0  0" >> /etc/fstab  && \
   echo "/dev/sr4  /mnt/dev/sr4  udf,iso9660  users,noauto,exec,utf8,ro  0  0" >> /etc/fstab
 
+
 # copy ARM source last, helps with Docker build caching
 COPY . /opt/arm/
-
+# These shouldnt be needed as docker-entrypoint.sh should do it
+RUN \
+  ln -sf /home/arm/config/arm.yaml /opt/arm/arm.yaml && \
+  ln -sf /home/arm/config/apprise.yaml /opt/arm/apprise.yaml && \
+  ln -sf /home/arm/config/.abcde.conf /opt/arm/setup/.abcde.conf \
+  ln -sf "/opt/arm/setup/.abcde.conf" "/root"
 # Disable SSH
 RUN rm -rf /etc/service/sshd /etc/my_init.d/00_regen_ssh_host_keys.sh
 
@@ -163,19 +171,20 @@ COPY docker/start/docker-entrypoint.sh /etc/my_init.d/docker-entrypoint.sh
 # We need to use a modified udev
 COPY docker/udev /etc/init.d/udev
 # Copy the docker version file
-COPY ./docker/VERSION /
+COPY ./docker/VERSION /opt/arm/
 RUN chmod +x /etc/my_init.d/*.sh
 RUN chmod +x /opt/arm/arm/ripper/main.py
 
 # Create a user group
 RUN addgroup arm
 RUN useradd -r -s /bin/bash -g root -G arm -u 1001 arm
-
 RUN chown -R arm:arm /opt/arm
+# Our docker udev rule
 RUN ln -sv /opt/arm/setup/51-automedia-docker.rules /lib/udev/rules.d/
+
 EXPOSE 8080
 #VOLUME /home/arm
-VOLUME /home/arm/Music
+VOLUME /home/arm/music
 VOLUME /home/arm/logs
 VOLUME /home/arm/media
 VOLUME /home/arm/config
