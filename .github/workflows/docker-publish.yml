@@ -9,11 +9,11 @@ on:
   schedule:
     - cron: '44 10 * * *'
   push:
-    branches: [ docker ]
+    branches: [ docker_udev ]
     # Publish semver tags as releases.
     tags: [ 'v2.5.9' ]
   pull_request:
-    branches: [ docker ]
+    branches: [ docker_udev ]
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
