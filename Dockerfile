@@ -140,7 +140,6 @@ RUN    \
 COPY ./docs/arm.yaml.sample /opt/arm/arm.yaml
 COPY ./docs/apprise.yaml /opt/arm/apprise.yaml
 RUN \
-  mkdir -m 0777 -p /home/arm /home/arm/config /mnt/dev/sr0 /mnt/dev/sr1 /mnt/dev/sr2 /mnt/dev/sr3 /mnt/dev/sr4 && \
   echo "/dev/sr0  /mnt/dev/sr0  udf,iso9660  users,noauto,exec,utf8,ro  0  0" >> /etc/fstab  && \
   echo "/dev/sr1  /mnt/dev/sr1  udf,iso9660  users,noauto,exec,utf8,ro  0  0" >> /etc/fstab  && \
   echo "/dev/sr2  /mnt/dev/sr2  udf,iso9660  users,noauto,exec,utf8,ro  0  0" >> /etc/fstab  && \
@@ -152,7 +151,7 @@ RUN \
 COPY . /opt/arm/
 # Create a user group
 RUN addgroup arm
-RUN useradd -r -s /bin/bash -g root -G arm -u 1001 arm
+RUN useradd -r -s /bin/bash -g cdrom -G "${GID}" -u "${UID}" arm
 RUN chown -R arm:arm /opt/arm
 # These shouldnt be needed as docker-entrypoint.sh should do it
 RUN \

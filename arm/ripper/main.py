@@ -249,20 +249,11 @@ def main(logfile, job):
                     utils.move_files(hb_out_path, track.filename, job, True)
                 else:
                     utils.move_files(hb_out_path, track.filename, job, track.main_feature)
-        # TODO extract this section and move it out of main
-        # move movie poster
-        src_poster = os.path.join(hb_out_path, "poster.png")
-        dst_poster = os.path.join(final_directory, "poster.png")
-        if os.path.isfile(src_poster):
-            if not os.path.isfile(dst_poster):
-                try:
-                    shutil.move(src_poster, dst_poster)
-                except Exception as poster_error:
-                    logging.error(f"Unable to move poster.png to '{final_directory}' - Error: {poster_error}")
-            else:
-                logging.info("File: poster.png already exists.  Not moving.")
-
+        # Movie the movie poster if we have one
+        utils.move_movie_poster(final_directory, hb_out_path)
+        # Scan emby if arm.yaml requires it
         utils.scan_emby()
+        # Set permissions if arm.yaml requires it
         utils.set_permissions(job, final_directory)
 
         # Clean up Blu-ray backup
