@@ -249,10 +249,7 @@ def get_cdrom_status(devpath):
     :param devpath: path to cdrom
     :return int:
     """
-
-    SECRET_KEY = os.environ.get('RUN_AS_USER', False)
-
-    if SECRET_KEY:
+    if os.path.exists('/.dockerenv'):
         print('I am running in a Docker container')
         return 4
     try:
@@ -720,7 +717,7 @@ def duplicate_run_check(dev_path):
             mins_last_run = int(round(abs(j.start_time - datetime.datetime.now()).total_seconds()) / 60)
             if mins_last_run <= 1:
                 logging.error(f"Job already running on {dev_path}")
-                sys.exit(1)
+                #sys.exit(1)
 
 
 def save_disc_poster(final_directory, job):

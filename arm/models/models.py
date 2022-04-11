@@ -13,6 +13,7 @@ from flask_login import LoginManager, current_user, login_user, UserMixin  # noq
 from arm.ripper import music_brainz
 from arm.ui import db
 from arm.config.config import cfg
+
 hidden_attribs = ("OMDB_API_KEY", "EMBY_USERID", "EMBY_PASSWORD",
                   "EMBY_API_KEY", "PB_KEY", "IFTTT_KEY", "PO_KEY",
                   "PO_USER_KEY", "PO_APP_KEY", "ARM_API_KEY",
@@ -119,6 +120,10 @@ class Job(db.Model):
         :param found_hvdvd_ts:  gets pushed in from utils - saves importing utils
         :return: None
         """
+        if os.path.exists('/.dockerenv'):
+            logging.debug("-----------INSIDE DOCKER--------")
+            if self.disctype in ("dvd", "bluray"):
+                return 1
         if self.disctype == "music":
             logging.debug("Disc is music.")
             self.label = music_brainz.main(self)
