@@ -98,4 +98,4 @@ jobs:
                 with:
                     src: docker.io/${{ env.IMAGE_NAME }}:${{ env.TAG }}
                     # make sure the github name is correct
-                    dst: ${{ env.REGISTRY }}/${{ github.actor }}/automatic-ripping-machine${{ env.TAG }}
+                    dst: ${{ env.REGISTRY }}/${{ github.actor }}/automatic-ripping-machine:${{ env.TAG }}
