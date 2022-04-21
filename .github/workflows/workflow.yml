@@ -6,9 +6,12 @@ name: "Publish Main Docker Image"
 # documentation.
 
 on:
-    # run every day at midnight
-    schedule:
-        - cron: '0 0 * * *'
+    # This should trigger the build everytime the main branch docker build runs
+    workflow_run:
+        workflows: ["publish-docker-image"]
+        types: [requested]
+    branches:
+      - 'v2_devel'
     push:
         branches: [ docker ]
     pull_request:
