@@ -4,11 +4,10 @@ name: "Publish Main Docker Image"
 # They are provided by a third-party and are governed by
 # separate terms of service, privacy policy, and support
 # documentation.
-
 on:
     workflow_run:
         workflows: publish-docker-image
-        types: [requested]
+        types: [requested, completed]
         branches:
             - 'v2_devel'
     # This should trigger the build everytime the main branch docker build runs
