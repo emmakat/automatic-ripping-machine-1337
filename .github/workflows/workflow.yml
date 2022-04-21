@@ -6,12 +6,11 @@ name: "Publish Main Docker Image"
 # documentation.
 
 on:
-  # This should trigger the build everytime the main branch docker build runs
-  workflow_run:
-    workflows: publish-docker-image
-    types: [requested]
-    branches:
-      - 'v2_devel'
+    workflow_run:
+        workflows: publish-docker-image
+        types: [requested]
+        branches:
+            - 'v2_devel'
     # This should trigger the build everytime the main branch docker build runs
     push:
         branches: [ docker ]
