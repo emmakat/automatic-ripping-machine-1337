@@ -42,8 +42,11 @@ fi
 if [[ ! -f "${HOME}/.abcde.conf" ]] ; then
   echo "creating example abcde config ${HOME}/.abcde.conf"
   cp /opt/arm/setup/.abcde.conf "${HOME}/.abcde.conf"
-  ln -sv "${HOME}/.abcde.conf" "${HOME}/config/.abcde.conf"
   chown "${USER}.${USER}" "${HOME}/.abcde.conf"
+
+  if [[ ! -e "${HOME}/config/.abcde.conf" ]]; then
+      ln -sv "${HOME}/.abcde.conf" "${HOME}/config/.abcde.conf"
+  fi
 fi
 echo "setting makemkv app-Key"
 if ! [[ -z "${MAKEMKV_APP_KEY}" ]] ; then
