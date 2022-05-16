@@ -540,8 +540,6 @@ def changeparams():
         app.logger.debug(f"main={config.MAINFEATURE}")
         job.disctype = format(form.DISCTYPE.data)
         db.session.commit()
-        db.session.refresh(job)
-        db.session.refresh(config)
         flash(f'Parameters changed. Rip Method={config.RIPMETHOD}, Main Feature={config.MAINFEATURE},'
               f'Minimum Length={config.MINLENGTH}, '
               f'Maximum Length={config.MAXLENGTH}, Disctype={job.disctype}', "success")
