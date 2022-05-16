@@ -535,12 +535,11 @@ def changeparams():
         cfg["MINLENGTH"] = config.MINLENGTH = format(form.MINLENGTH.data)
         cfg["MAXLENGTH"] = config.MAXLENGTH = format(form.MAXLENGTH.data)
         cfg["RIPMETHOD"] = config.RIPMETHOD = format(form.RIPMETHOD.data)
-        cfg["MAINFEATURE"] = config.MAINFEATURE = bool(format(form.MAINFEATURE.data))  # must be 1 for True 0 for False
+        # BooleanField yields "True" or "False"
+        cfg["MAINFEATURE"] = config.MAINFEATURE = format(form.MAINFEATURE.data) == "True"
         app.logger.debug(f"main={config.MAINFEATURE}")
         job.disctype = format(form.DISCTYPE.data)
         db.session.commit()
-        db.session.refresh(job)
-        db.session.refresh(config)
         flash(f'Parameters changed. Rip Method={config.RIPMETHOD}, Main Feature={config.MAINFEATURE},'
               f'Minimum Length={config.MINLENGTH}, '
               f'Maximum Length={config.MAXLENGTH}, Disctype={job.disctype}', "success")
