@@ -244,7 +244,6 @@ def main(logfile, job):
             time.sleep(5)
             sleep_time += 5
             db.session.refresh(job)
-            db.session.refresh(config)
             if job.title_manual:
                 break
         job.status = "active"
