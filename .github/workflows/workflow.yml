@@ -40,7 +40,7 @@ jobs:
             -
                 name: Get branch name
                 id: branch-name
-                uses: tj-actions/branch-names@v5.1
+                uses: tj-actions/branch-names@v5.4
 
             -
                 name: Set tag for non-default branch
@@ -62,7 +62,7 @@ jobs:
                 uses: docker/login-action@28218f9b04b4f3f62068d7b6ce6ca5b26e35336c
                 with:
                     registry: ${{ env.REGISTRY }}
-                    username: ${{ github.actor }}
+                    username: ${{ github.repository_owner }}
                     password: ${{ secrets.GITHUB_TOKEN }}
 
             -
@@ -100,4 +100,4 @@ jobs:
                 with:
                     src: docker.io/${{ env.IMAGE_NAME }}:${{ env.TAG }}
                     # make sure the github name is correct
-                    dst: ${{ env.REGISTRY }}/${{ github.actor }}/automatic-ripping-machine:${{ env.TAG }}
+                    dst: ${{ env.REGISTRY }}/${{ github.repository_owner }}/automatic-ripping-machine:${{ env.TAG }}
